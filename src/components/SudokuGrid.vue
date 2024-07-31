@@ -8,7 +8,7 @@ const { boldRows, boldColumns } = decorations
 </script>
 
 <template>
-  <g>
+  <g class="sudoku-grid">
     <line v-for="(_, row) in (rows + 1)" x1="0" :y1="row * 100" :x2="rows * 100" :y2="row * 100" stroke="black"
       stroke-width="1" />
     <line v-for="(_, column) in (columns + 1)" :x1="column * 100" y1="0" :x2="column * 100" :y2="columns * 100"

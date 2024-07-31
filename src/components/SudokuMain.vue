@@ -53,7 +53,7 @@ onMounted(() => {
       'PageUp', 'PageDown', 'End', 'Home', 'Insert', 'Delete'
     ];
 
-    const key = event.key;
+    const key = event.keyCode;
 
     if (event.ctrlKey || event.altKey || event.shiftKey) {
       event.preventDefault();
@@ -62,27 +62,42 @@ onMounted(() => {
       event.preventDefault();
     }
 
-    if (key in ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0']) {
-      if (!event.ctrlKey && !event.shiftKey && !event.altKey) {
-        if (selectedCells.size >= 1) {
-          selectedCells.values().forEach(cell => {
-            sudoku.cells[cell.idx].setValue(parseInt(key))
-          })
+
+    if (selectedCells.size === 0) {
+      return;
+    }
+
+    if (key === 46) { // Delete
+      selectedCells.values().forEach(cell => {
+        const noModifier = !event.ctrlKey && !event.shiftKey && !event.altKey;
+        if (noModifier) {
+          sudoku.cells[cell.idx].setValue(undefined)
         }
+        if (noModifier || event.ctrlKey) {
+          sudoku.cells[cell.idx].candidates = []
+        }
+        if (noModifier || event.shiftKey) {
+          sudoku.cells[cell.idx].pencilMarks = []
+        }
+      })
+    }
+
+    if (key >= 48 && key <= 57) { // 0-9
+      const value = key - 48;
+      if (!event.ctrlKey && !event.shiftKey && !event.altKey) {
+        selectedCells.values().forEach(cell => {
+          sudoku.cells[cell.idx].setValue(value)
+        })
       }
       if (event.ctrlKey && !event.shiftKey && !event.altKey) {
-        if (selectedCells.size >= 1) {
-          selectedCells.values().forEach(cell => {
-            sudoku.cells[cell.idx].toggleCandidate(parseInt(key))
-          })
-        }
+        selectedCells.values().forEach(cell => {
+          sudoku.cells[cell.idx].toggleCandidate(value)
+        })
       }
       if (!event.ctrlKey && event.shiftKey && !event.altKey) {
-        if (selectedCells.size >= 1) {
-          selectedCells.values().forEach(cell => {
-            sudoku.cells[cell.idx].togglePencilMark(parseInt(key))
-          })
-        }
+        selectedCells.values().forEach(cell => {
+          sudoku.cells[cell.idx].togglePencilMark(value)
+        })
       }
     }
   });
@@ -94,9 +109,7 @@ onMounted(() => {
   <svg class="sudoku-main" xmlns="http://www.w3.org/2000/svg" :width="columns * 100 + sudokuMargin * 2"
     :height="rows * 100 + sudokuMargin * 2"
     :viewBox="`${-sudokuMargin} ${-sudokuMargin} ${columns * 100 + sudokuMargin * 2} ${rows * 100 + sudokuMargin * 2}`"
-    shape-rendering="geometricPrecision"
-    pointer-events="none"
-    >
+    shape-rendering="geometricPrecision" pointer-events="none">
 
     <SudokuHighlighter :metadata="sudoku.metadata" :cells="selectedCells" />
 
@@ -104,7 +117,8 @@ onMounted(() => {
 
     <SudokuCell :cells="sudoku.cells" />
 
-    <SudokuCellClick :metadata="sudoku.metadata" :cells="sudoku.cells" @set-selection="setSelection" @toggle-selection="toggleSelection" />
+    <SudokuCellClick :metadata="sudoku.metadata" :cells="sudoku.cells" @set-selection="setSelection"
+      @toggle-selection="toggleSelection" />
 
   </svg>
 </template>

@@ -78,7 +78,7 @@ const regionBorderPath = computed(() => {
 
     // 找到一个位于极高点的cell，然后调用cellsToRegionBorder得到外围路径
     for (let cell of cells.values()) {
-        if (!outOfBound(cell.row - 1, cell.column) && !cellsMap.has(getCellIdx(cell.row - 1, cell.column)) && !triedUp.has(getCellIdx(cell.row, cell.column))) {
+        if ((outOfBound(cell.row - 1, cell.column) || !cellsMap.has(getCellIdx(cell.row - 1, cell.column))) && !triedUp.has(getCellIdx(cell.row, cell.column))) {
             finalPaths += cellsToRegionBorder(cell)
         }
     }
@@ -89,7 +89,7 @@ const regionBorderPath = computed(() => {
 </script>
 
 <template>
-    <g>
+    <g class="sudoku-highlighter">
         <path :d="regionBorderPath" fill="transparent" stroke="rgba(0, 126, 255, 0.7)" :stroke-width="borderWidth"
             stroke-linejoin="round" />
     </g>
