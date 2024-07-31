@@ -58,7 +58,7 @@ onMounted(() => {
     if (event.ctrlKey || event.altKey || event.shiftKey) {
       event.preventDefault();
     }
-    if (keysToPrevent.includes(key)) {
+    if (keysToPrevent.includes(event.key)) {
       event.preventDefault();
     }
 

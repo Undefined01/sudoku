@@ -63,7 +63,7 @@ export class SudokuCell {
         this.value = value
     }
 
-    setValue(value: number) {
+    setValue(value: number | undefined) {
         if (this.isGiven) {
             return
         }
