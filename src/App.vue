@@ -1,19 +1,18 @@
 <script setup lang="ts">
-import SudokuMain from './components/SudokuMain.vue'
-import SudokuPad from './components/SudokuPad.vue'
+import SudokuMain from "./components/SudokuMain.vue";
+import SudokuPad from "./components/SudokuPad.vue";
 
-import { provide } from 'vue'
+import { provide } from "vue";
 
-import { Sudoku } from '@/models/sudoku'
-import { defaultSettings } from '@/models/settings'
+import { Sudoku } from "@/models/sudoku";
+import { defaultSettings } from "@/models/settings";
 
 const sudoku = Sudoku.fromString(
-  '.....6....637....22.....15.6..2.85....8...6....46.5..3.36.....11....328....1.....'
-)
-const settings = defaultSettings
-provide('sudoku', sudoku)
-provide('settings', settings)
-
+  ".....6....637....22.....15.6..2.85....8...6....46.5..3.36.....11....328....1.....",
+);
+const settings = defaultSettings;
+provide("sudoku", sudoku);
+provide("settings", settings);
 </script>
 
 <template>

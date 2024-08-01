@@ -1,140 +1,179 @@
 <script setup lang="ts">
-import { inject } from 'vue';
-import { Sudoku, CellPosition } from '@/models/sudoku'
-import { CellSet } from '@/models/utils'
-import { SudokuHandleMode } from '@/models/sudokuSelectionEventHandler';
+import { inject } from "vue";
+import { Sudoku, CellPosition } from "@/models/sudoku";
+import { CellSet } from "@/models/utils";
+import { SudokuHandleMode } from "@/models/sudokuSelectionEventHandler";
 
-const sudoku = inject<Sudoku>('sudoku')!
-const { metadata, selectionEventHandler } = sudoku
-const { rows, columns } = metadata
+const sudoku = inject<Sudoku>("sudoku")!;
+const { metadata, selectionEventHandler } = sudoku;
+const { rows, columns } = metadata;
 
-
-function getCellsWithSameNumber(cellPosition: CellPosition): CellSet | undefined {
-  const selectedNumber = sudoku.getCell(cellPosition).value
+function getCellsWithSameNumber(
+  cellPosition: CellPosition,
+): CellSet | undefined {
+  const selectedNumber = sudoku.getCell(cellPosition).value;
   if (selectedNumber === undefined) {
-    return undefined
+    return undefined;
   }
-  const cellsWithSameNumber = new CellSet()
+  const cellsWithSameNumber = new CellSet();
   for (let cell of sudoku.cells) {
     if (cell.value === selectedNumber) {
-      cellsWithSameNumber.add(cell.position)
+      cellsWithSameNumber.add(cell.position);
     }
   }
-  return cellsWithSameNumber
+  return cellsWithSameNumber;
 }
 
 function selectSameNumber(cellPosition: CellPosition, event: MouseEvent) {
-  const cellsWithSameNumber = getCellsWithSameNumber(cellPosition)
+  const cellsWithSameNumber = getCellsWithSameNumber(cellPosition);
   if (cellsWithSameNumber === undefined) {
-    return
+    return;
   }
   selectionEventHandler.setSelection({
     reference: cellPosition,
     cells: cellsWithSameNumber,
-    clearPreviousSelection: !event.ctrlKey && !event.shiftKey
-  })
+    clearPreviousSelection: !event.ctrlKey && !event.shiftKey,
+  });
 }
 
-let isMultiselecting = false
-let multiselectedCells: CellSet = new CellSet()
-let multiselectMode: SudokuHandleMode = 'set'
-let longPressTimer: number | null = null
+let isMultiselecting = false;
+let multiselectedCells: CellSet = new CellSet();
+let multiselectMode: SudokuHandleMode = "set";
+let longPressTimer: number | null = null;
 
-async function startMultiselect(cellPosition: CellPosition, event: MouseEvent | TouchEvent) {
-  const mouseEvent = event as MouseEvent
+async function startMultiselect(
+  cellPosition: CellPosition,
+  event: MouseEvent | TouchEvent,
+) {
+  const mouseEvent = event as MouseEvent;
   if (mouseEvent.buttons !== undefined && mouseEvent.buttons !== 1) {
-    return
+    return;
   }
-  isMultiselecting = true
-  multiselectedCells.clear()
-  multiselectedCells.add(cellPosition)
+  isMultiselecting = true;
+  multiselectedCells.clear();
+  multiselectedCells.add(cellPosition);
   const selectionMode = selectionEventHandler.setSelection({
     reference: cellPosition,
     cells: new CellSet(cellPosition),
-    clearPreviousSelection: !event.ctrlKey && !event.shiftKey
-  })
+    clearPreviousSelection: !event.ctrlKey && !event.shiftKey,
+  });
   longPressTimer = setTimeout(() => {
-    console.log('long press')
-    const cellsWithSameNumber = getCellsWithSameNumber(cellPosition)
+    console.log("long press");
+    const cellsWithSameNumber = getCellsWithSameNumber(cellPosition);
     if (cellsWithSameNumber !== undefined) {
-      cellsWithSameNumber.values().forEach(cell => {
-        multiselectedCells.add(cell)
-      })
+      cellsWithSameNumber.values().forEach((cell) => {
+        multiselectedCells.add(cell);
+      });
       selectionEventHandler.setSelection({
         reference: cellPosition,
         cells: new CellSet(cellPosition),
         clearPreviousSelection: !event.ctrlKey && !event.shiftKey,
         mode: selectionMode,
-      })
+      });
     }
-  }, 600)
-  multiselectMode = selectionMode
+  }, 600);
+  multiselectMode = selectionMode;
 }
 
-function doMultiselect(cellPosition: CellPosition, event: MouseEvent | TouchEvent) {
-  console.log('do multiselect', cellPosition, event)
+function doMultiselect(
+  cellPosition: CellPosition,
+  event: MouseEvent | TouchEvent,
+) {
+  console.log("do multiselect", cellPosition, event);
   if (!isMultiselecting) {
-    return
+    return;
   }
-  const mouseEvent = event as MouseEvent
+  const mouseEvent = event as MouseEvent;
   if (mouseEvent.buttons === 0) {
-    endMultiselect()
-    return
+    endMultiselect();
+    return;
   }
   if (multiselectedCells.has(cellPosition)) {
-    return
+    return;
   }
   if (longPressTimer !== null) {
-    clearTimeout(longPressTimer)
-    longPressTimer = null
+    clearTimeout(longPressTimer);
+    longPressTimer = null;
   }
-  multiselectedCells.add(cellPosition)
+  multiselectedCells.add(cellPosition);
   selectionEventHandler.setSelection({
     reference: cellPosition,
     cells: multiselectedCells,
     mode: multiselectMode,
-  })
+  });
 }
 
 function endMultiselect() {
-  isMultiselecting = false
+  isMultiselecting = false;
   if (longPressTimer !== null) {
-    clearTimeout(longPressTimer)
-    longPressTimer = null
+    clearTimeout(longPressTimer);
+    longPressTimer = null;
   }
 }
 
 function handleTouchMove(event: TouchEvent) {
   if (event.touches.length !== 1) {
-    endMultiselect()
-    return
+    endMultiselect();
+    return;
   }
-  const touch = event.touches[0]
-  const element = document.elementFromPoint(touch.clientX, touch.clientY)
-  if (element === null || element.className !== 'sudoku-cell') {
-    console.log(element)
-    return
+  const touch = event.touches[0];
+  const element = document.elementFromPoint(touch.clientX, touch.clientY);
+  if (element === null || element.className !== "sudoku-cell") {
+    console.log(element);
+    return;
   }
-  const row = parseInt(element.getAttribute('y')!) / 100
-  const column = parseInt(element.getAttribute('x')!) / 100
-  doMultiselect({ row, column, idx: row * columns + column }, event)
+  const row = parseInt(element.getAttribute("y")!) / 100;
+  const column = parseInt(element.getAttribute("x")!) / 100;
+  doMultiselect({ row, column, idx: row * columns + column }, event);
 }
-
 </script>
 
 <template>
   <g>
     <template v-for="(_, row) in rows" :key="row">
       <template v-for="(_, column) in columns" :key="column">
-        <rect class="sudoku-cell" :x="column * 100" :y="row * 100" width="100" height="100" fill="transparent"
+        <rect
+          class="sudoku-cell"
+          :x="column * 100"
+          :y="row * 100"
+          width="100"
+          height="100"
+          fill="transparent"
           pointer-events="visiblePainted"
-          @dblclick="event => selectSameNumber({ row, column, idx: row * columns + column }, event)"
-          @mousedown="event => startMultiselect({ row, column, idx: row * columns + column }, event)"
-          @mousemove="event => doMultiselect({ row, column, idx: row * columns + column }, event)"
+          @dblclick="
+            (event) =>
+              selectSameNumber(
+                { row, column, idx: row * columns + column },
+                event,
+              )
+          "
+          @mousedown="
+            (event) =>
+              startMultiselect(
+                { row, column, idx: row * columns + column },
+                event,
+              )
+          "
+          @mousemove="
+            (event) =>
+              doMultiselect({ row, column, idx: row * columns + column }, event)
+          "
           @mouseup="endMultiselect"
-          @touchstart="event => startMultiselect({ row, column, idx: row * columns + column }, event)"
-          @touchmove="event => handleTouchMove(event)"
-          @touchend="(event) => { event.preventDefault(); endMultiselect(); }" />
+          @touchstart="
+            (event) =>
+              startMultiselect(
+                { row, column, idx: row * columns + column },
+                event,
+              )
+          "
+          @touchmove="(event) => handleTouchMove(event)"
+          @touchend="
+            (event) => {
+              event.preventDefault();
+              endMultiselect();
+            }
+          "
+        />
       </template>
     </template>
   </g>

@@ -22,7 +22,7 @@
 }
 
 .sudoku-cell-text {
-  user-select: none
+  user-select: none;
 }
 
 @media (prefers-color-scheme: light) {
