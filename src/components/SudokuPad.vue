@@ -1,12 +1,10 @@
 <script setup lang="ts">
-import { mdiBackspace, mdiBackspaceOutline, mdiPalette, mdiRedo, mdiUndo } from '@mdi/js';
+import {  mdiBackspaceOutline, mdiPalette, mdiRedo, mdiUndo } from '@mdi/js';
 
-import { defaultSettings, Settings } from '@/models/settings';
 import { inject, ref } from 'vue';
 import { Sudoku } from '@/models/sudoku';
 
 const sudoku = inject<Sudoku>('sudoku')!
-const settings = inject<Settings>('settings') ?? defaultSettings
 
 const deleteSelected = () => {
     sudoku.updateState(true, state => {

@@ -4,7 +4,7 @@ import SudokuPad from './components/SudokuPad.vue'
 
 import { provide } from 'vue'
 
-import { Sudoku, CellPosition, CellSet, SudokuState } from '@/models/sudoku'
+import { Sudoku } from '@/models/sudoku'
 import { defaultSettings } from '@/models/settings'
 
 const sudoku = Sudoku.fromString(

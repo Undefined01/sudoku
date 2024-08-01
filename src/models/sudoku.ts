@@ -1,7 +1,7 @@
 import { immerable, produce } from 'immer'
 import { SelectionEventHandlerForSelectedCells, SudokuSelectionEventHandler } from './sudokuSelectionEventHandler'
 import { CellSet } from './utils'
-import { markRaw, reactive, shallowReactive, ShallowReactive, ShallowRef, shallowRef } from 'vue'
+import { shallowReactive, ShallowReactive } from 'vue'
 export { CellSet }
 
 export type CellIndex = number
@@ -162,17 +162,10 @@ export class Sudoku {
         this.self.currentStateIndex += count
         this.self.state = this.self.stateHistory[this.self.currentStateIndex]
     }
-}
-
-export class SudokuDecorations {
-    boldRows: Array<number> = [0, 3, 6, 9]
-    boldColumns: Array<number> = [0, 3, 6, 9]
-}
-
-export namespace Sudoku {
+    
     // Import a Sudoku from a string representation like
     // .....6....637....22.....15.6..2.85....8...6....46.5..3.36.....11....328....1.....
-    export function fromString(code: string, options: { rows?: number, columns?: number } = {}) {
+    static fromString(code: string, options: { rows?: number, columns?: number } = {}) {
         const rows = options.rows ?? 9
         const columns = options.columns ?? 9
         const sudoku = new Sudoku(rows, columns)
@@ -187,4 +180,9 @@ export namespace Sudoku {
         }
         return sudoku.self
     }
+}
+
+export class SudokuDecorations {
+    boldRows: Array<number> = [0, 3, 6, 9]
+    boldColumns: Array<number> = [0, 3, 6, 9]
 }

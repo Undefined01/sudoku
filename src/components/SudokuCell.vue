@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { inject } from 'vue';
-import { Sudoku, SudokuCell } from '@/models/sudoku'
+import { Sudoku } from '@/models/sudoku'
 import { defaultSettings, Settings } from '@/models/settings';
 
 const sudoku = inject<Sudoku>('sudoku')!
@@ -29,7 +29,7 @@ const fivePositionOnHavingCandidates = { x: cellSize / 2 + pencilMarkOffsetWhenH
 
 <template>
     <g class="sudoku-cell">
-        <template v-for="cell in sudoku.cells">
+        <template v-for="cell in sudoku.cells" :key="cell.position.idx">
             <text v-if="cell.value !== undefined" :x="(cell.position.column + 0.5) * cellSize"
                 :y="(cell.position.row + 0.5) * cellSize" class="sudoku-cell-text" text-anchor="middle"
                 dominant-baseline="central" :font-size="valueFontSize" :fill="cell.isGiven ? 'black' : 'blue'">
@@ -47,7 +47,7 @@ const fivePositionOnHavingCandidates = { x: cellSize / 2 + pencilMarkOffsetWhenH
                     text-anchor="middle" dominant-baseline="central" :font-size="pencilMarkFontSize" fill="gray">
                     {{ pencilMark }}
                 </text>
-                <text v-else="cell.pencilMarks.includes(5) && cell.candidates.length > 0"
+                <text v-else
                     :x="cell.position.column * cellSize + fivePositionOnHavingCandidates.x"
                     :y="cell.position.row * cellSize + fivePositionOnHavingCandidates.y" class="sudoku-cell-text"
                     text-anchor="middle" dominant-baseline="central" :font-size="pencilMarkFontSize" fill="gray">

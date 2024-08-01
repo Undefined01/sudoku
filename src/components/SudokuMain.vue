@@ -1,13 +1,12 @@
 <script setup lang="ts">
-import { reactive, onMounted, provide, shallowReactive, shallowRef, watch, inject } from 'vue'
-import { freeze, immerable, produce } from "immer"
+import { onMounted, inject } from 'vue'
 
 import SudokuGrid from './SudokuGrid.vue'
 import SudokuCell from './SudokuCell.vue'
 import SudokuCellClick from './SudokuCellClick.vue'
 import SudokuHighlighter from './SudokuHighlighter.vue'
 
-import { Sudoku, CellPosition, CellSet, SudokuState } from '@/models/sudoku'
+import { Sudoku } from '@/models/sudoku'
 import { defaultSettings, Settings } from '@/models/settings';
 
 const sudoku = inject<Sudoku>('sudoku')!
@@ -54,7 +53,7 @@ onMounted(() => {
       case 'Digit6':
       case 'Digit7':
       case 'Digit8':
-      case 'Digit9':
+      case 'Digit9': {
         if (event.repeat) {
           break;
         }
@@ -77,6 +76,7 @@ onMounted(() => {
           }
         })
         break;
+      }
       case 'KeyZ':
         if (event.ctrlKey && !event.shiftKey && !event.altKey) {
           sudoku.undo()

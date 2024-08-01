@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { inject } from 'vue';
-import { Sudoku, SudokuMetadata, SudokuCell, CellPosition } from '@/models/sudoku'
+import { Sudoku, CellPosition } from '@/models/sudoku'
 import { CellSet } from '@/models/utils'
 import { SudokuHandleMode } from '@/models/sudokuSelectionEventHandler';
 
@@ -111,7 +111,7 @@ function handleTouchMove(event: TouchEvent) {
   }
   const touch = event.touches[0]
   const element = document.elementFromPoint(touch.clientX, touch.clientY)
-  if (element === null || element.className.baseVal !== 'sudoku-cell') {
+  if (element === null || element.className !== 'sudoku-cell') {
     console.log(element)
     return
   }
@@ -124,8 +124,8 @@ function handleTouchMove(event: TouchEvent) {
 
 <template>
   <g>
-    <template v-for="(_, row) in rows">
-      <template v-for="(_, column) in columns">
+    <template v-for="(_, row) in rows" :key="row">
+      <template v-for="(_, column) in columns" :key="column">
         <rect class="sudoku-cell" :x="column * 100" :y="row * 100" width="100" height="100" fill="transparent"
           pointer-events="visiblePainted"
           @dblclick="event => selectSameNumber({ row, column, idx: row * columns + column }, event)"
