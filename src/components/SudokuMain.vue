@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, onMounted } from 'vue'
+import { reactive, onMounted, provide } from 'vue'
 import SudokuGrid from './SudokuGrid.vue'
 import SudokuCell from './SudokuCell.vue'
 import SudokuCellClick from './SudokuCellClick.vue'
@@ -11,8 +11,11 @@ const sudoku = reactive(Sudoku.fromString(
   '.....6....637....22.....15.6..2.85....8...6....46.5..3.36.....11....328....1.....'
 ))
 
+provide('sudoku', { sudoku })
+
 const { rows, columns } = sudoku.metadata
-const selectedCells = reactive(new CellSet())
+const { state, } = sudoku
+const { selectedCells } = state
 
 const sudokuMargin = 10
 
@@ -71,13 +74,13 @@ onMounted(() => {
       selectedCells.values().forEach(cell => {
         const noModifier = !event.ctrlKey && !event.shiftKey && !event.altKey;
         if (noModifier) {
-          sudoku.cells[cell.idx].setValue(undefined)
+          state.getCell(cell).setValue(undefined)
         }
         if (noModifier || event.ctrlKey) {
-          sudoku.cells[cell.idx].candidates = []
+          state.getCell(cell).candidates = []
         }
         if (noModifier || event.shiftKey) {
-          sudoku.cells[cell.idx].pencilMarks = []
+          state.getCell(cell).pencilMarks = []
         }
       })
     }
@@ -86,17 +89,17 @@ onMounted(() => {
       const value = key - 48;
       if (!event.ctrlKey && !event.shiftKey && !event.altKey) {
         selectedCells.values().forEach(cell => {
-          sudoku.cells[cell.idx].setValue(value)
+          state.getCell(cell).setValue(value)
         })
       }
       if (event.ctrlKey && !event.shiftKey && !event.altKey) {
         selectedCells.values().forEach(cell => {
-          sudoku.cells[cell.idx].toggleCandidate(value)
+          state.getCell(cell).toggleCandidate(value)
         })
       }
       if (!event.ctrlKey && event.shiftKey && !event.altKey) {
         selectedCells.values().forEach(cell => {
-          sudoku.cells[cell.idx].togglePencilMark(value)
+          state.getCell(cell).togglePencilMark(value)
         })
       }
     }
@@ -111,13 +114,13 @@ onMounted(() => {
     :viewBox="`${-sudokuMargin} ${-sudokuMargin} ${columns * 100 + sudokuMargin * 2} ${rows * 100 + sudokuMargin * 2}`"
     shape-rendering="geometricPrecision" pointer-events="none">
 
-    <SudokuHighlighter :metadata="sudoku.metadata" :cells="selectedCells" />
+    <SudokuHighlighter :highlighted-cells="selectedCells" />
 
     <SudokuGrid :metadata="sudoku.metadata" />
 
-    <SudokuCell :cells="sudoku.cells" />
+    <SudokuCell :cells="sudoku.state.cells" />
 
-    <SudokuCellClick :metadata="sudoku.metadata" :cells="sudoku.cells" @set-selection="setSelection"
+    <SudokuCellClick :metadata="sudoku.metadata" :cells="sudoku.state.cells" @set-selection="setSelection"
       @toggle-selection="toggleSelection" />
 
   </svg>

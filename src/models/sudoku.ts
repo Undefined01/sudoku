@@ -1,3 +1,7 @@
+import { SelectionEventHandlerForSelectedCells, SudokuSelectionEventHandler } from './sudokuSelectionEventHandler'
+import { CellSet } from './utils'
+export { CellSet }
+
 export type CellIndex = number
 export type CellPosition = {
     row: number
@@ -5,52 +9,8 @@ export type CellPosition = {
     idx: CellIndex
 }
 
-export class CellSet {
-    cells: Map<CellIndex, CellPosition> = new Map()
-
-    constructor(...cells: CellPosition[]) {
-        cells.forEach(cell => this.cells.set(cell.idx, cell))
-    }
-
-    get size() {
-        return this.cells.size
-    }
-
-    add(cell: CellPosition) {
-        this.cells.set(cell.idx, cell)
-    }
-
-    has(cell: CellPosition) {
-        return this.cells.has(cell.idx)
-    }
-
-    delete(cell: CellPosition) {
-        this.cells.delete(cell.idx)
-    }
-
-    clear() {
-        this.cells.clear()
-    }
-
-    equals(other: CellSet): boolean {
-        if (this.size !== other.size) {
-            return false
-        }
-        for (const cell of this.cells.values()) {
-            if (!other.has(cell)) {
-                return false
-            }
-        }
-        return true
-    }
-
-    values(): Array<CellPosition> {
-        return Array.from(this.cells.values())
-    }
-}
-
 export class SudokuCell {
-    position: CellPosition
+    readonly position: CellPosition
     isGiven: boolean
     value?: number
     candidates: number[] = []
@@ -110,9 +70,27 @@ export type SudokuMetadata = {
     decorations: SudokuDecorations
 }
 
+export class SudokuState {
+    cells: SudokuCell[]
+    selectedCells: CellSet = new CellSet()
+
+    constructor(cells: SudokuCell[]) {
+        this.cells = cells
+    }
+
+    getCells(): SudokuCell[] {
+        return this.cells
+    }
+
+    getCell(position: CellPosition) {
+        return this.cells[position.idx]
+    }
+}
+
 export class Sudoku {
     metadata: SudokuMetadata
-    cells: SudokuCell[]
+    state: SudokuState
+    selectionEventHandler: SudokuSelectionEventHandler
 
     constructor(rows: number, columns: number) {
         this.metadata = {
@@ -122,7 +100,7 @@ export class Sudoku {
             columns,
             decorations: new SudokuDecorations(),
         }
-        this.cells = Array.from({ length: rows * columns }, (_, idx) => new SudokuCell({
+        const cells = Array.from({ length: rows * columns }, (_, idx) => new SudokuCell({
             position: {
                 row: Math.floor(idx / columns),
                 column: idx % columns,
@@ -131,14 +109,12 @@ export class Sudoku {
             isGiven: false,
             value: undefined,
         }))
+        this.state = new SudokuState(cells)
+        this.selectionEventHandler = new SelectionEventHandlerForSelectedCells(this.state.selectedCells)
     }
 
-    getCell(position: CellPosition) {
-        return this.cells[position.idx]
-    }
-
-    getCellByRC(row: number, column: number) {
-        return this.cells[row * this.metadata.columns + column]
+    getCellPosition(row: number, column: number): CellPosition {
+        return this.state.cells[row * this.metadata.columns + column].position
     }
 }
 
@@ -156,8 +132,9 @@ export namespace Sudoku {
         const sudoku = new Sudoku(rows, columns)
         for (let i = 0; i < code.length; i++) {
             const char = code[i]
-            const cell = sudoku.cells[i]
             if (char !== '.') {
+                const cellPosition = sudoku.getCellPosition(Math.floor(i / columns), i % columns)
+                const cell = sudoku.state.getCell(cellPosition)
                 cell.isGiven = true
                 cell.value = Number(char)
             }

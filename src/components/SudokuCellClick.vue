@@ -1,26 +1,15 @@
 <script setup lang="ts">
-import { SudokuMetadata, SudokuCell, CellPosition,CellSet } from '@/models/sudoku'
+import { inject } from 'vue';
+import { Sudoku, SudokuMetadata, SudokuCell, CellPosition } from '@/models/sudoku'
+import { CellSet } from '@/models/utils'
+import { SudokuInjection } from '@/models/injection'
+import { SudokuHandleMode } from '@/models/sudokuSelectionEventHandler';
 
-const { metadata, cells } = defineProps<{ metadata: SudokuMetadata, cells: SudokuCell[] }>()
+const { sudoku } = inject<SudokuInjection>('sudoku')!
+const { metadata, state, selectionEventHandler } = sudoku
 const { rows, columns } = metadata
-const emit = defineEmits<{
-  (e: 'set-selection', cells: CellSet, resolve: (ret: boolean) => void): void
-  (e: 'toggle-selection', reference: CellPosition, cells: CellSet, resolve: (ret: boolean) => void, isSet: boolean | undefined): void
-}>()
+const { cells } = state
 
-function emitToggleSelection(event: MouseEvent, reference: CellPosition, cells: CellSet, isSet: boolean | undefined = undefined): Promise<boolean> {
-  return new Promise((resolve) => {
-    if (!event.ctrlKey && !event.shiftKey) {
-      return emit('set-selection', cells, resolve)
-    } else {
-      return emit('toggle-selection', reference, cells, resolve, isSet)
-    }
-  })
-}
-
-// function toggleSelection(cellPosition: CellPosition, event: MouseEvent) {
-//   emitToggleSelection(event, cellPosition, new CellSet(cellPosition))
-// }
 
 function getCellsWithSameNumber(cellPosition: CellPosition): CellSet | undefined {
   const selectedNumber = cells[cellPosition.idx].value
@@ -41,12 +30,16 @@ function selectSameNumber(cellPosition: CellPosition, event: MouseEvent) {
   if (cellsWithSameNumber === undefined) {
     return
   }
-  emitToggleSelection(event, cellPosition, cellsWithSameNumber)
+  selectionEventHandler.setSelection({
+    reference: cellPosition,
+    cells: cellsWithSameNumber,
+    clearPreviousSelection: !event.ctrlKey && !event.shiftKey
+  })
 }
 
 let isMultiselecting = false
 let multiselectedCells: CellSet = new CellSet()
-let multiselectMode: 'add' | 'remove' = 'add'
+let multiselectMode: SudokuHandleMode = 'set'
 let longPressTimer: number | null = null
 
 async function startMultiselect(cellPosition: CellPosition, event: MouseEvent) {
@@ -56,7 +49,11 @@ async function startMultiselect(cellPosition: CellPosition, event: MouseEvent) {
   isMultiselecting = true
   multiselectedCells.clear()
   multiselectedCells.add(cellPosition)
-  const emitRet = await emitToggleSelection(event, cellPosition, new CellSet(cellPosition))
+  const selectionMode = selectionEventHandler.setSelection({
+    reference: cellPosition,
+    cells: new CellSet(cellPosition),
+    clearPreviousSelection: !event.ctrlKey && !event.shiftKey
+  })
   longPressTimer = setTimeout(() => {
     console.log('long press')
     const cellsWithSameNumber = getCellsWithSameNumber(cellPosition)
@@ -64,10 +61,15 @@ async function startMultiselect(cellPosition: CellPosition, event: MouseEvent) {
       cellsWithSameNumber.values().forEach(cell => {
         multiselectedCells.add(cell)
       })
-      emitToggleSelection(event, cellPosition, multiselectedCells, emitRet)
+      selectionEventHandler.setSelection({
+        reference: cellPosition,
+        cells: new CellSet(cellPosition),
+        clearPreviousSelection: !event.ctrlKey && !event.shiftKey,
+        mode: selectionMode,
+      })
     }
   }, 600)
-  multiselectMode = emitRet ? 'add' : 'remove'
+  multiselectMode = selectionMode
 }
 
 function doMultiselect(cellPosition: CellPosition, event: MouseEvent) {
@@ -86,11 +88,11 @@ function doMultiselect(cellPosition: CellPosition, event: MouseEvent) {
     longPressTimer = null
   }
   multiselectedCells.add(cellPosition)
-  if (multiselectMode === 'add') {
-    emitToggleSelection(event, cellPosition, multiselectedCells, true)
-  } else {
-    emitToggleSelection(event, cellPosition, multiselectedCells, false)
-  }
+  selectionEventHandler.setSelection({
+    reference: cellPosition,
+    cells: multiselectedCells,
+    mode: multiselectMode,
+  })
 }
 
 function endMultiselect() {
@@ -112,8 +114,7 @@ function endMultiselect() {
           @dblclick="event => selectSameNumber({ row, column, idx: row * columns + column }, event)"
           @mousedown="event => startMultiselect({ row, column, idx: row * columns + column }, event)"
           @mousemove="event => doMultiselect({ row, column, idx: row * columns + column }, event)"
-          @mouseup="endMultiselect"
-           />
+          @mouseup="endMultiselect" />
       </template>
     </template>
   </g>

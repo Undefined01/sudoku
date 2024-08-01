@@ -1,12 +1,18 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import { CellPosition, CellSet, SudokuMetadata } from '@/models/sudoku'
+import { computed, inject } from 'vue'
+import { CellPosition, CellSet } from '@/models/sudoku'
+import { defaultSettings, Settings } from '@/models/settings';
+import { SudokuInjection } from '@/models/injection'
 
-const { metadata, cells } = defineProps<{ metadata: SudokuMetadata, cells: CellSet }>()
+const { highlightedCells } = defineProps<{ highlightedCells: CellSet }>()
 
+const { sudoku } = inject<SudokuInjection>('sudoku')!
+const { metadata } = sudoku
 const { rows, columns } = metadata
-const borderWidth = 12
-const cellLength = 100
+
+const settings = inject<Settings>('settings') ?? defaultSettings
+const borderWidth = settings.appearance.sudoku.selectedHighlight.width
+const cellSize = settings.appearance.sudoku.cellSize
 
 const getCellIdx = (row: number, column: number) => {
     return row * columns + column
@@ -19,7 +25,7 @@ const regionBorderPath = computed(() => {
     const cellsMap = new Set<number>()
     const triedUp = new Set<number>()
 
-    cells.values().forEach(cell => {
+    highlightedCells.forEach(cell => {
         cellsMap.add(getCellIdx(cell.row, cell.column))
     })
 
@@ -31,9 +37,9 @@ const regionBorderPath = computed(() => {
             { dr: 0, dc: -1 },  // Left
         ]
         const corner = [
-            { dr: borderWidth * 0.5, dc: cellLength - borderWidth * 0.5 },              // Top right
-            { dr: cellLength - borderWidth * 0.5, dc: cellLength - borderWidth * 0.5 }, // Bottom right
-            { dr: cellLength - borderWidth * 0.5, dc: borderWidth * 0.5 },              // Bottom left
+            { dr: borderWidth * 0.5, dc: cellSize - borderWidth * 0.5 },              // Top right
+            { dr: cellSize - borderWidth * 0.5, dc: cellSize - borderWidth * 0.5 }, // Bottom right
+            { dr: cellSize - borderWidth * 0.5, dc: borderWidth * 0.5 },              // Bottom left
             { dr: borderWidth * 0.5, dc: borderWidth * 0.5 },                           // Top left
         ]
 
@@ -47,7 +53,7 @@ const regionBorderPath = computed(() => {
         let startDirection = 0
         let directionIndex = startDirection
 
-        const startPoint = `M ${currentCol * cellLength + corner[3].dc} ${currentRow * cellLength + corner[3].dr}`
+        const startPoint = `M ${currentCol * cellSize + corner[3].dc} ${currentRow * cellSize + corner[3].dr}`
         path += startPoint
 
         do {
@@ -59,13 +65,13 @@ const regionBorderPath = computed(() => {
             let nextCol = currentCol + directions[directionIndex].dc
 
             if (outOfBound(nextRow, nextCol) || !cellsMap.has(getCellIdx(nextRow, nextCol))) {
-                path += ` L ${currentCol * cellLength + corner[directionIndex].dc} ${currentRow * cellLength + corner[directionIndex].dr}`
+                path += ` L ${currentCol * cellSize + corner[directionIndex].dc} ${currentRow * cellSize + corner[directionIndex].dr}`
                 directionIndex = (directionIndex + 1) % 4
             } else {
                 currentRow = nextRow
                 currentCol = nextCol
                 directionIndex = (directionIndex + 3) % 4
-                path += ` L ${currentCol * cellLength + corner[(directionIndex + 3) % 4].dc} ${currentRow * cellLength + corner[(directionIndex + 3) % 4].dr}`
+                path += ` L ${currentCol * cellSize + corner[(directionIndex + 3) % 4].dc} ${currentRow * cellSize + corner[(directionIndex + 3) % 4].dr}`
             }
         } while (currentRow !== startRow || currentCol !== startCol || directionIndex !== startDirection)
 
@@ -77,7 +83,7 @@ const regionBorderPath = computed(() => {
     let finalPaths = ""
 
     // 找到一个位于极高点的cell，然后调用cellsToRegionBorder得到外围路径
-    for (let cell of cells.values()) {
+    for (let cell of highlightedCells.values()) {
         if ((outOfBound(cell.row - 1, cell.column) || !cellsMap.has(getCellIdx(cell.row - 1, cell.column))) && !triedUp.has(getCellIdx(cell.row, cell.column))) {
             finalPaths += cellsToRegionBorder(cell)
         }
@@ -95,8 +101,4 @@ const regionBorderPath = computed(() => {
     </g>
 </template>
 
-<style scoped>
-.sudoku-cell-text {
-    user-select: none
-}
-</style>
+<style scoped></style>
