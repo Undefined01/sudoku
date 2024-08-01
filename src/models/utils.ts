@@ -1,6 +1,8 @@
+import { immerable } from 'immer'
 import { CellIndex, CellPosition } from './sudoku'
 
 export class CellSet {
+    [immerable] = true
     cells: Map<CellIndex, CellPosition> = new Map()
 
     constructor(...cells: CellPosition[]) {

@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import { computed, inject } from 'vue'
-import { CellPosition, CellSet } from '@/models/sudoku'
+import { CellPosition, CellSet, Sudoku } from '@/models/sudoku'
 import { defaultSettings, Settings } from '@/models/settings';
-import { SudokuInjection } from '@/models/injection'
 
-const { highlightedCells } = defineProps<{ highlightedCells: CellSet }>()
+const { highlightedCells: highlightedCellsGetter } = defineProps<{ highlightedCells: () => CellSet }>()
 
-const { sudoku } = inject<SudokuInjection>('sudoku')!
+const sudoku = inject<Sudoku>('sudoku')!
 const { metadata } = sudoku
 const { rows, columns } = metadata
+const highlightedCells = computed(highlightedCellsGetter)
 
 const settings = inject<Settings>('settings') ?? defaultSettings
 const borderWidth = settings.appearance.sudoku.selectedHighlight.width
@@ -25,7 +25,7 @@ const regionBorderPath = computed(() => {
     const cellsMap = new Set<number>()
     const triedUp = new Set<number>()
 
-    highlightedCells.forEach(cell => {
+    highlightedCells.value.forEach(cell => {
         cellsMap.add(getCellIdx(cell.row, cell.column))
     })
 
@@ -83,7 +83,7 @@ const regionBorderPath = computed(() => {
     let finalPaths = ""
 
     // 找到一个位于极高点的cell，然后调用cellsToRegionBorder得到外围路径
-    for (let cell of highlightedCells.values()) {
+    for (let cell of highlightedCells.value.values()) {
         if ((outOfBound(cell.row - 1, cell.column) || !cellsMap.has(getCellIdx(cell.row - 1, cell.column))) && !triedUp.has(getCellIdx(cell.row, cell.column))) {
             finalPaths += cellsToRegionBorder(cell)
         }

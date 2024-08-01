@@ -1,4 +1,4 @@
-import { CellPosition, CellSet } from "./sudoku"
+import { CellPosition, CellSet, Sudoku } from "./sudoku"
 
 export type SudokuHandleMode = 'set' | 'clear'
 
@@ -14,28 +14,30 @@ export interface SudokuSelectionEventHandler {
 }
 
 export class SelectionEventHandlerForSelectedCells {
-    selectedCells: CellSet
-    constructor(selectedCells: CellSet) {
-        this.selectedCells = selectedCells
+    sudoku: Sudoku
+    constructor(sudoku: Sudoku) {
+        this.sudoku = sudoku
     }
 
     setSelection(event: SudokuSelectionEvent): SudokuHandleMode {
         const { reference, cells, clearPreviousSelection } = event
         let { mode } = event
-        if (reference !== undefined && this.selectedCells.has(reference)) {
-            mode = 'clear'
-        }
-        if (clearPreviousSelection) {
-            this.selectedCells.clear()
-        }
-        if (mode === undefined) {
-            mode = 'set'
-        }
-        if (mode === 'set') {
-            cells.forEach(cell => this.selectedCells.add(cell))
-        } else {
-            cells.forEach(cell => this.selectedCells.delete(cell))
-        }
-        return mode
+        this.sudoku.updateState(false, state => {
+            if (reference !== undefined && state.selectedCells.has(reference)) {
+                mode = 'clear'
+            }
+            if (clearPreviousSelection) {
+                state.selectedCells.clear()
+            }
+            if (mode === undefined) {
+                mode = 'set'
+            }
+            if (mode === 'set') {
+                cells.forEach(cell => state.selectedCells.add(cell))
+            } else {
+                cells.forEach(cell => state.selectedCells.delete(cell))
+            }
+        })
+        return mode!
     }
 }

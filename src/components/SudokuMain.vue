@@ -1,107 +1,99 @@
 <script setup lang="ts">
-import { reactive, onMounted, provide } from 'vue'
+import { reactive, onMounted, provide, shallowReactive, shallowRef, watch } from 'vue'
+import { freeze, immerable, produce } from "immer"
+
 import SudokuGrid from './SudokuGrid.vue'
 import SudokuCell from './SudokuCell.vue'
 import SudokuCellClick from './SudokuCellClick.vue'
 import SudokuHighlighter from './SudokuHighlighter.vue'
 
-import { Sudoku, CellPosition, CellSet } from '@/models/sudoku'
+import { Sudoku, CellPosition, CellSet, SudokuState } from '@/models/sudoku'
+import { defaultSettings } from '@/models/settings'
 
-const sudoku = reactive(Sudoku.fromString(
+const sudoku = Sudoku.fromString(
   '.....6....637....22.....15.6..2.85....8...6....46.5..3.36.....11....328....1.....'
-))
+)
 
-provide('sudoku', { sudoku })
+const settings = defaultSettings
+provide('sudoku', sudoku)
+provide('settings', settings)
 
-const { rows, columns } = sudoku.metadata
-const { state, } = sudoku
-const { selectedCells } = state
-
-const sudokuMargin = 10
-
-function setSelection(cells: CellSet, resolve: (ret: boolean) => void) {
-  if (cells.equals(selectedCells)) {
-    selectedCells.clear()
-    resolve(false)
-  } else {
-    selectedCells.clear()
-    cells.values().forEach(cell => {
-      selectedCells.add(cell)
-    })
-    resolve(true)
-  }
-}
-
-function toggleSelection(reference: CellPosition, cells: CellSet, resolve: (ret: boolean) => void, isSet: boolean | undefined = undefined) {
-  if (isSet !== true && selectedCells.has(reference)) {
-    cells.values().forEach(cell => {
-      selectedCells.delete(cell)
-    })
-    resolve(false)
-  } else {
-    cells.values().forEach(cell => {
-      selectedCells.add(cell)
-    })
-    resolve(true)
-  }
-}
+const { metadata } = sudoku
+const { rows, columns } = metadata
+const sudokuMargin = settings.appearance.sudoku.sudokuSvgMargin
 
 onMounted(() => {
   document.addEventListener('keydown', function (event) {
-    const keysToPrevent = [
-      'F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8', 'F9', 'F10', 'F11', 'F12',
-      'Escape',
-      'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
-      'Backspace', 'Tab', 'Enter', 'Space',
-      'PageUp', 'PageDown', 'End', 'Home', 'Insert', 'Delete'
-    ];
+    const key = event.code;
 
-    const key = event.keyCode;
+    // console.log(event.key, event.code, event)
 
-    if (event.ctrlKey || event.altKey || event.shiftKey) {
-      event.preventDefault();
-    }
-    if (keysToPrevent.includes(event.key)) {
-      event.preventDefault();
-    }
-
-
-    if (selectedCells.size === 0) {
+    if (sudoku.selectedCells.size === 0) {
       return;
     }
 
-    if (key === 46) { // Delete
-      selectedCells.values().forEach(cell => {
-        const noModifier = !event.ctrlKey && !event.shiftKey && !event.altKey;
-        if (noModifier) {
-          state.getCell(cell).setValue(undefined)
-        }
-        if (noModifier || event.ctrlKey) {
-          state.getCell(cell).candidates = []
-        }
-        if (noModifier || event.shiftKey) {
-          state.getCell(cell).pencilMarks = []
-        }
-      })
-    }
-
-    if (key >= 48 && key <= 57) { // 0-9
-      const value = key - 48;
-      if (!event.ctrlKey && !event.shiftKey && !event.altKey) {
-        selectedCells.values().forEach(cell => {
-          state.getCell(cell).setValue(value)
+    switch (key) {
+      case 'Backspace':
+      case 'Delete':
+        sudoku.updateState(true, state => {
+          state.selectedCells.values().forEach(cell => {
+            const noModifier = !event.ctrlKey && !event.shiftKey && !event.altKey;
+            if (noModifier) {
+              state.getCell(cell).setValue(undefined)
+            }
+            if (noModifier || event.ctrlKey) {
+              state.getCell(cell).candidates = []
+            }
+            if (noModifier || event.shiftKey) {
+              state.getCell(cell).pencilMarks = []
+            }
+          })
         })
-      }
-      if (event.ctrlKey && !event.shiftKey && !event.altKey) {
-        selectedCells.values().forEach(cell => {
-          state.getCell(cell).toggleCandidate(value)
+        break;
+      case 'Digit0':
+      case 'Digit1':
+      case 'Digit2':
+      case 'Digit3':
+      case 'Digit4':
+      case 'Digit5':
+      case 'Digit6':
+      case 'Digit7':
+      case 'Digit8':
+      case 'Digit9':
+        if (event.repeat) {
+          break;
+        }
+        const value = parseInt(key[5])
+        sudoku.updateState(true, state => {
+          if (!event.ctrlKey && !event.shiftKey && !event.altKey) {
+            state.selectedCells.values().forEach(cell => {
+              state.getCell(cell).setValue(value)
+            })
+          }
+          if (event.ctrlKey && !event.shiftKey && !event.altKey) {
+            state.selectedCells.values().forEach(cell => {
+              state.getCell(cell).toggleCandidate(value)
+            })
+          }
+          if (!event.ctrlKey && event.shiftKey && !event.altKey) {
+            state.selectedCells.values().forEach(cell => {
+              state.getCell(cell).togglePencilMark(value)
+            })
+          }
         })
-      }
-      if (!event.ctrlKey && event.shiftKey && !event.altKey) {
-        selectedCells.values().forEach(cell => {
-          state.getCell(cell).togglePencilMark(value)
-        })
-      }
+        break;
+      case 'KeyZ':
+        if (event.ctrlKey && !event.shiftKey && !event.altKey) {
+          sudoku.undo()
+        } else if (event.ctrlKey && event.shiftKey && !event.altKey) {
+          sudoku.redo()
+        }
+        break;
+      case 'KeyY':
+        if (event.ctrlKey && !event.shiftKey && !event.altKey) {
+          sudoku.redo()
+        }
+        break;
     }
   });
 })
@@ -114,14 +106,13 @@ onMounted(() => {
     :viewBox="`${-sudokuMargin} ${-sudokuMargin} ${columns * 100 + sudokuMargin * 2} ${rows * 100 + sudokuMargin * 2}`"
     shape-rendering="geometricPrecision" pointer-events="none">
 
-    <SudokuHighlighter :highlighted-cells="selectedCells" />
+    <SudokuHighlighter :highlighted-cells="() => sudoku.selectedCells" />
 
     <SudokuGrid :metadata="sudoku.metadata" />
 
-    <SudokuCell :cells="sudoku.state.cells" />
+    <SudokuCell/>
 
-    <SudokuCellClick :metadata="sudoku.metadata" :cells="sudoku.state.cells" @set-selection="setSelection"
-      @toggle-selection="toggleSelection" />
+    <SudokuCellClick/>
 
   </svg>
 </template>

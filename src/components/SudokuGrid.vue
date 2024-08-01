@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { type SudokuMetadata } from '@/models/sudoku'
+import { inject } from 'vue';
+import { Sudoku, type SudokuMetadata } from '@/models/sudoku'
 
-const { metadata } = defineProps<{ metadata: SudokuMetadata }>()
+const sudoku = inject<Sudoku>('sudoku')!
+const { metadata } = sudoku
 const { rows, columns } = metadata
 const decorations = metadata.decorations;
 const { boldRows, boldColumns } = decorations

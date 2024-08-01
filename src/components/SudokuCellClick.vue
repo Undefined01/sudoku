@@ -2,22 +2,20 @@
 import { inject } from 'vue';
 import { Sudoku, SudokuMetadata, SudokuCell, CellPosition } from '@/models/sudoku'
 import { CellSet } from '@/models/utils'
-import { SudokuInjection } from '@/models/injection'
 import { SudokuHandleMode } from '@/models/sudokuSelectionEventHandler';
 
-const { sudoku } = inject<SudokuInjection>('sudoku')!
-const { metadata, state, selectionEventHandler } = sudoku
+const sudoku = inject<Sudoku>('sudoku')!
+const { metadata, selectionEventHandler } = sudoku
 const { rows, columns } = metadata
-const { cells } = state
 
 
 function getCellsWithSameNumber(cellPosition: CellPosition): CellSet | undefined {
-  const selectedNumber = cells[cellPosition.idx].value
+  const selectedNumber = sudoku.getCell(cellPosition).value
   if (selectedNumber === undefined) {
     return undefined
   }
   const cellsWithSameNumber = new CellSet()
-  for (let cell of cells) {
+  for (let cell of sudoku.cells) {
     if (cell.value === selectedNumber) {
       cellsWithSameNumber.add(cell.position)
     }

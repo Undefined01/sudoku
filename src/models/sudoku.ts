@@ -1,5 +1,7 @@
+import { immerable, produce } from 'immer'
 import { SelectionEventHandlerForSelectedCells, SudokuSelectionEventHandler } from './sudokuSelectionEventHandler'
 import { CellSet } from './utils'
+import { markRaw, reactive, shallowReactive, ShallowReactive, ShallowRef, shallowRef } from 'vue'
 export { CellSet }
 
 export type CellIndex = number
@@ -10,6 +12,7 @@ export type CellPosition = {
 }
 
 export class SudokuCell {
+    [immerable] = true
     readonly position: CellPosition
     isGiven: boolean
     value?: number
@@ -71,6 +74,7 @@ export type SudokuMetadata = {
 }
 
 export class SudokuState {
+    [immerable] = true
     cells: SudokuCell[]
     selectedCells: CellSet = new CellSet()
 
@@ -88,8 +92,11 @@ export class SudokuState {
 }
 
 export class Sudoku {
+    self: ShallowReactive<Sudoku>
     metadata: SudokuMetadata
     state: SudokuState
+    currentStateIndex: number = 0
+    stateHistory: Array<SudokuState>
     selectionEventHandler: SudokuSelectionEventHandler
 
     constructor(rows: number, columns: number) {
@@ -110,11 +117,50 @@ export class Sudoku {
             value: undefined,
         }))
         this.state = new SudokuState(cells)
-        this.selectionEventHandler = new SelectionEventHandlerForSelectedCells(this.state.selectedCells)
+        this.stateHistory = [this.state]
+        this.selectionEventHandler = new SelectionEventHandlerForSelectedCells(this)
+
+        this.self = shallowReactive(this)
+    }
+
+    get cells() {
+        return this.self.state.cells
+    }
+
+    get selectedCells() {
+        return this.self.state.selectedCells
+    }
+
+    getCell(position: CellPosition) {
+        return this.self.state.cells[position.idx]
     }
 
     getCellPosition(row: number, column: number): CellPosition {
-        return this.state.cells[row * this.metadata.columns + column].position
+        return this.self.state.cells[row * this.self.metadata.columns + column].position
+    }
+
+    updateState(_immediateRecord: boolean, f: (state: SudokuState) => void) {
+        const newState = produce(this.self.state, f)
+        this.self.stateHistory = this.self.stateHistory.slice(0, this.self.currentStateIndex + 1)
+        this.self.stateHistory.push(newState)
+        this.self.currentStateIndex += 1
+        this.self.state = newState
+    }
+
+    undo(count: number = 1) {
+        if (this.self.currentStateIndex - count < 0) {
+            return
+        }
+        this.self.currentStateIndex -= count
+        this.self.state = this.self.stateHistory[this.self.currentStateIndex]
+    }
+
+    redo(count: number = 1) {
+        if (this.self.currentStateIndex + count >= this.self.stateHistory.length) {
+            return
+        }
+        this.self.currentStateIndex += count
+        this.self.state = this.self.stateHistory[this.self.currentStateIndex]
     }
 }
 
@@ -139,6 +185,6 @@ export namespace Sudoku {
                 cell.value = Number(char)
             }
         }
-        return sudoku
+        return sudoku.self
     }
 }
