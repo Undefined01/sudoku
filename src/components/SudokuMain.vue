@@ -20,7 +20,7 @@ onMounted(() => {
   document.addEventListener("keydown", function (event) {
     const key = event.code;
 
-    // console.log(event.key, event.code, event)
+    console.log(event.key, event.code, event)
 
     if (sudoku.selectedCells.size === 0) {
       return;
@@ -54,11 +54,21 @@ onMounted(() => {
       case "Digit6":
       case "Digit7":
       case "Digit8":
-      case "Digit9": {
+      case "Digit9":
+      case "Numpad0":
+      case "Numpad1":
+      case "Numpad2":
+      case "Numpad3":
+      case "Numpad4":
+      case "Numpad5":
+      case "Numpad6":
+      case "Numpad7":
+      case "Numpad8":
+      case "Numpad9": {
         if (event.repeat) {
           break;
         }
-        const value = parseInt(key[5]);
+        const value = parseInt(key.charAt(key.length - 1));
         sudoku.updateState(true, (state) => {
           if (!event.ctrlKey && !event.shiftKey && !event.altKey) {
             state.selectedCells.values().forEach((cell) => {
@@ -90,7 +100,11 @@ onMounted(() => {
           sudoku.redo();
         }
         break;
+      default:
+        return;
     }
+
+    event.preventDefault();
   });
 });
 </script>

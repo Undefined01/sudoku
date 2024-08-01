@@ -58,7 +58,6 @@ async function startMultiselect(
     clearPreviousSelection: !event.ctrlKey && !event.shiftKey,
   });
   longPressTimer = setTimeout(() => {
-    console.log("long press");
     const cellsWithSameNumber = getCellsWithSameNumber(cellPosition);
     if (cellsWithSameNumber !== undefined) {
       cellsWithSameNumber.values().forEach((cell) => {
@@ -79,7 +78,6 @@ function doMultiselect(
   cellPosition: CellPosition,
   event: MouseEvent | TouchEvent,
 ) {
-  console.log("do multiselect", cellPosition, event);
   if (!isMultiselecting) {
     return;
   }
@@ -119,7 +117,6 @@ function handleTouchMove(event: TouchEvent) {
   const touch = event.touches[0];
   const element = document.elementFromPoint(touch.clientX, touch.clientY);
   if (element === null || element.className !== "sudoku-cell") {
-    console.log(element);
     return;
   }
   const row = parseInt(element.getAttribute("y")!) / 100;

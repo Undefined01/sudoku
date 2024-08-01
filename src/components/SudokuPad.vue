@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { mdiBackspaceOutline, mdiPalette, mdiRedo, mdiUndo } from "@mdi/js";
+import { mdiAutoFix, mdiBackspaceOutline, mdiPalette, mdiRedo, mdiStrategy, mdiUndo } from "@mdi/js";
 
 import { inject, ref } from "vue";
 import { Sudoku } from "@/models/sudoku";
+import { SudokuSolver } from "@/models/sudokuSolver";
 
 const sudoku = inject<Sudoku>("sudoku")!;
 
@@ -52,10 +53,54 @@ const toggleValue = (value: number) => {
 
 type PadMode = "value" | "candidate" | "pencilMark" | "color";
 const mode = ref<PadMode>("value");
+
+
+const solver = new SudokuSolver(sudoku)
 </script>
 
 <template>
   <div class="sudokupad-container">
+    <v-btn class="pad-button" @click="() => solver.fillPencilMarks()">
+      <v-icon :icon="mdiAutoFix"/>
+      <v-tooltip
+        activator="parent"
+        location="bottom"
+      >自动填充 pencil marks</v-tooltip>
+    </v-btn>
+    <v-btn class="pad-button" @click="() => solver.solveOneStep()">
+      <v-icon :icon="mdiStrategy"/>
+      <v-tooltip
+        activator="parent"
+        location="bottom"
+      >求解下一步</v-tooltip>
+    </v-btn>
+    <v-btn class="pad-button" @click="() => toggleValue(1)">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+        <text
+          font-size="16"
+          x="12"
+          y="12"
+          text-anchor="middle"
+          dominant-baseline="central"
+        >
+          1
+        </text>
+      </svg>
+    </v-btn>
+    <v-btn class="pad-button" @click="() => toggleValue(1)">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+        <text
+          font-size="16"
+          x="12"
+          y="12"
+          text-anchor="middle"
+          dominant-baseline="central"
+        >
+          1
+        </text>
+      </svg>
+    </v-btn>
+
     <v-btn class="pad-button" @click="() => toggleValue(1)">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
         <text
@@ -286,15 +331,15 @@ const mode = ref<PadMode>("value");
       </svg>
     </v-btn>
 
-    <v-btn class="pad-button" @click="sudoku.undo">
+    <v-btn class="pad-button" @click="() => sudoku.undo()">
       <v-icon :icon="mdiUndo" />
     </v-btn>
 
-    <v-btn class="pad-button" @click="sudoku.redo">
+    <v-btn class="pad-button" @click="() => sudoku.redo()">
       <v-icon :icon="mdiRedo" />
     </v-btn>
 
-    <v-btn class="pad-button" @click="deleteSelected">
+    <v-btn class="pad-button" @click="() => deleteSelected()">
       <v-icon :icon="mdiBackspaceOutline" />
     </v-btn>
 

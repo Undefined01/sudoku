@@ -153,8 +153,11 @@ export class Sudoku {
       .position;
   }
 
-  updateState(_immediateRecord: boolean, f: (state: SudokuState) => void) {
+  updateState(_immediateRecord: boolean, f: (state: SudokuState) => void): boolean {
     const newState = produce(this.self.state, f);
+    if (this.self.state === newState) {
+        return false
+    }
     this.self.stateHistory = this.self.stateHistory.slice(
       0,
       this.self.currentStateIndex + 1,
@@ -162,6 +165,7 @@ export class Sudoku {
     this.self.stateHistory.push(newState);
     this.self.currentStateIndex += 1;
     this.self.state = newState;
+    return true
   }
 
   undo(count: number = 1) {
