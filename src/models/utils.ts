@@ -58,4 +58,8 @@ export class CellSet {
     }
     return intersection;
   }
+
+  [Symbol.iterator]() {
+    return this.cells.values();
+  }
 }

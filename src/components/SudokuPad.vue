@@ -14,10 +14,10 @@ const deleteSelected = () => {
         state.getCell(cell).setValue(undefined);
       }
       if (mode.value === "candidate") {
-        state.getCell(cell).candidates = [];
+        state.getCell(cell).clearCandidates();
       }
       if (mode.value === "pencilMark") {
-        state.getCell(cell).pencilMarks = [];
+        state.getCell(cell).clearPencilMarks();
       }
     });
   });
@@ -30,22 +30,10 @@ const toggleValue = (value: number) => {
         state.getCell(cell).setValue(value);
       }
       if (mode.value === "candidate") {
-        if (state.getCell(cell).candidates.includes(value)) {
-          state.getCell(cell).candidates = state
-            .getCell(cell)
-            .candidates.filter((v) => v !== value);
-        } else {
-          state.getCell(cell).candidates.push(value);
-        }
+        state.getCell(cell).toggleCandidate(value);
       }
       if (mode.value === "pencilMark") {
-        if (state.getCell(cell).pencilMarks.includes(value)) {
-          state.getCell(cell).pencilMarks = state
-            .getCell(cell)
-            .pencilMarks.filter((v) => v !== value);
-        } else {
-          state.getCell(cell).pencilMarks.push(value);
-        }
+        state.getCell(cell).togglePencilMark(value)
       }
     });
   });

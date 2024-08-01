@@ -67,7 +67,7 @@ const fivePositionOnHavingCandidates = {
         {{ cell.value }}
       </text>
       <text
-        v-if="cell.candidates.length > 0"
+        v-if="cell.candidates.size > 0"
         :x="(cell.position.column + 0.5) * cellSize"
         :y="(cell.position.row + 0.5) * cellSize"
         class="sudoku-cell-text"
@@ -76,11 +76,11 @@ const fivePositionOnHavingCandidates = {
         :font-size="candidateFontSize"
         fill="blue"
       >
-        {{ cell.candidates.join("") }}
+        {{ [...cell.candidates].sort().join("") }}
       </text>
       <template v-for="pencilMark in cell.pencilMarks" :key="pencilMark">
         <text
-          v-if="!(pencilMark === 5 && cell.candidates.length > 0)"
+          v-if="!(pencilMark === 5 && cell.candidates.size > 0)"
           :x="
             cell.position.column * cellSize + pencilMarkPosition[pencilMark].x
           "

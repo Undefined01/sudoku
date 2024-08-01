@@ -19,8 +19,8 @@ export class SudokuCell {
   readonly position: CellPosition;
   isGiven: boolean;
   value?: number;
-  candidates: number[] = [];
-  pencilMarks: number[] = [];
+  candidates = new Set<number>();
+  pencilMarks = new Set<number>();
 
   constructor(options: {
     position: CellPosition;
@@ -38,8 +38,8 @@ export class SudokuCell {
       return;
     }
     this.value = value;
-    this.candidates = [];
-    this.pencilMarks = [];
+    this.candidates = new Set();
+    this.pencilMarks = new Set();
   }
 
   toggleCandidate(candidate: number) {
@@ -47,13 +47,16 @@ export class SudokuCell {
       return;
     }
     this.value = undefined;
-    const idx = this.candidates.indexOf(candidate);
-    if (idx >= 0) {
-      this.candidates.splice(idx, 1);
+    if (this.candidates.has(candidate)) {
+      this.candidates.delete(candidate)
     } else {
-      this.candidates.push(candidate);
+      this.candidates.add(candidate)
     }
     console.log(this.candidates);
+  }
+
+  clearCandidates() {
+    this.candidates.clear();
   }
 
   togglePencilMark(pencilMark: number) {
@@ -61,12 +64,15 @@ export class SudokuCell {
       return;
     }
     this.value = undefined;
-    const idx = this.pencilMarks.indexOf(pencilMark);
-    if (idx >= 0) {
-      this.pencilMarks.splice(idx, 1);
+    if (this.pencilMarks.has(pencilMark)) {
+      this.pencilMarks.delete(pencilMark)
     } else {
-      this.pencilMarks.push(pencilMark);
+      this.pencilMarks.add(pencilMark)
     }
+  }
+
+  clearPencilMarks() {
+    this.pencilMarks.clear();
   }
 }
 
