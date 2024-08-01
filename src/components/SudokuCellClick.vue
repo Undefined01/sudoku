@@ -40,8 +40,9 @@ let multiselectedCells: CellSet = new CellSet()
 let multiselectMode: SudokuHandleMode = 'set'
 let longPressTimer: number | null = null
 
-async function startMultiselect(cellPosition: CellPosition, event: MouseEvent) {
-  if (event.buttons !== 1) {
+async function startMultiselect(cellPosition: CellPosition, event: MouseEvent | TouchEvent) {
+  const mouseEvent = event as MouseEvent
+  if (mouseEvent.buttons !== undefined && mouseEvent.buttons !== 1) {
     return
   }
   isMultiselecting = true
@@ -70,11 +71,13 @@ async function startMultiselect(cellPosition: CellPosition, event: MouseEvent) {
   multiselectMode = selectionMode
 }
 
-function doMultiselect(cellPosition: CellPosition, event: MouseEvent) {
+function doMultiselect(cellPosition: CellPosition, event: MouseEvent | TouchEvent) {
+  console.log('do multiselect', cellPosition, event)
   if (!isMultiselecting) {
     return
   }
-  if (event.buttons === 0) {
+  const mouseEvent = event as MouseEvent
+  if (mouseEvent.buttons === 0) {
     endMultiselect()
     return
   }
@@ -101,18 +104,37 @@ function endMultiselect() {
   }
 }
 
+function handleTouchMove(event: TouchEvent) {
+  if (event.touches.length !== 1) {
+    endMultiselect()
+    return
+  }
+  const touch = event.touches[0]
+  const element = document.elementFromPoint(touch.clientX, touch.clientY)
+  if (element === null || element.className.baseVal !== 'sudoku-cell') {
+    console.log(element)
+    return
+  }
+  const row = parseInt(element.getAttribute('y')!) / 100
+  const column = parseInt(element.getAttribute('x')!) / 100
+  doMultiselect({ row, column, idx: row * columns + column }, event)
+}
+
 </script>
 
 <template>
   <g>
     <template v-for="(_, row) in rows">
       <template v-for="(_, column) in columns">
-        <rect :x="column * 100" :y="row * 100" width="100" height="100" fill="transparent"
+        <rect class="sudoku-cell" :x="column * 100" :y="row * 100" width="100" height="100" fill="transparent"
           pointer-events="visiblePainted"
           @dblclick="event => selectSameNumber({ row, column, idx: row * columns + column }, event)"
           @mousedown="event => startMultiselect({ row, column, idx: row * columns + column }, event)"
           @mousemove="event => doMultiselect({ row, column, idx: row * columns + column }, event)"
-          @mouseup="endMultiselect" />
+          @mouseup="endMultiselect"
+          @touchstart="event => startMultiselect({ row, column, idx: row * columns + column }, event)"
+          @touchmove="event => handleTouchMove(event)"
+          @touchend="(event) => { event.preventDefault(); endMultiselect(); }" />
       </template>
     </template>
   </g>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, onMounted, provide, shallowReactive, shallowRef, watch } from 'vue'
+import { reactive, onMounted, provide, shallowReactive, shallowRef, watch, inject } from 'vue'
 import { freeze, immerable, produce } from "immer"
 
 import SudokuGrid from './SudokuGrid.vue'
@@ -8,18 +8,13 @@ import SudokuCellClick from './SudokuCellClick.vue'
 import SudokuHighlighter from './SudokuHighlighter.vue'
 
 import { Sudoku, CellPosition, CellSet, SudokuState } from '@/models/sudoku'
-import { defaultSettings } from '@/models/settings'
+import { defaultSettings, Settings } from '@/models/settings';
 
-const sudoku = Sudoku.fromString(
-  '.....6....637....22.....15.6..2.85....8...6....46.5..3.36.....11....328....1.....'
-)
-
-const settings = defaultSettings
-provide('sudoku', sudoku)
-provide('settings', settings)
-
+const sudoku = inject<Sudoku>('sudoku')!
 const { metadata } = sudoku
 const { rows, columns } = metadata
+
+const settings = inject<Settings>('settings') ?? defaultSettings
 const sudokuMargin = settings.appearance.sudoku.sudokuSvgMargin
 
 onMounted(() => {
@@ -101,8 +96,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <svg class="sudoku-main" xmlns="http://www.w3.org/2000/svg" :width="columns * 100 + sudokuMargin * 2"
-    :height="rows * 100 + sudokuMargin * 2"
+  <svg class="sudoku-main" xmlns="http://www.w3.org/2000/svg"
     :viewBox="`${-sudokuMargin} ${-sudokuMargin} ${columns * 100 + sudokuMargin * 2} ${rows * 100 + sudokuMargin * 2}`"
     shape-rendering="geometricPrecision" pointer-events="none">
 
@@ -110,9 +104,9 @@ onMounted(() => {
 
     <SudokuGrid :metadata="sudoku.metadata" />
 
-    <SudokuCell/>
+    <SudokuCell />
 
-    <SudokuCellClick/>
+    <SudokuCellClick />
 
   </svg>
 </template>

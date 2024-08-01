@@ -10,9 +10,12 @@
   },
   "dependencies": {
     "immer": "^10.1.1",
-    "vue": "^3.4.31"
+    "vite-plugin-vuetify": "^2.0.3",
+    "vue": "^3.4.31",
+    "vuetify": "^3.6.14"
   },
   "devDependencies": {
+    "@mdi/js": "^7.4.47",
     "@vitejs/plugin-vue": "^5.0.5",
     "typescript": "^5.2.2",
     "vite": "^5.3.4",
