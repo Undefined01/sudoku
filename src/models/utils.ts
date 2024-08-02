@@ -1,5 +1,5 @@
 import { immerable } from "immer";
-import { CellIndex, CellPosition } from "./sudoku";
+import { CellPosition } from "./sudoku";
 
 export class CellSet {
   [immerable] = true;
