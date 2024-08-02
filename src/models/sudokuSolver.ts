@@ -286,15 +286,29 @@ export class SudokuSolver {
     }
 
     static *permutations<T>(arr: T[], size: number): Generator<T[]> {
-        if (size === 0) {
-            yield [];
-        } else {
-            for (let i = 0; i < arr.length; i++) {
-                const rest = arr.slice(i + 1);
-                for (const restPermutation of SudokuSolver.permutations(rest, size - 1)) {
-                    yield [arr[i], ...restPermutation];
+        if (size > arr.length) {
+            return
+        }
+        const states = new Array<number>(size).fill(0).map((_, i) => i);
+        yield states.map(i => arr[i]);
+        let i = size - 1;
+        while (true) {
+            if (states[i] + 1 >= arr.length) {
+                do {
+                    i--;
+                } while (i >= 0 && states[i] + 1 >= arr.length - size + i + 1);
+                if (i < 0) {
+                    return
                 }
+                states[i]++;
+                for (let j = i + 1; j <= size - 1; j++) {
+                    states[j] = states[j - 1] + 1;
+                }
+                i = size - 1;
+            } else {
+                states[i]++;
             }
+            yield states.map(i => arr[i]);
         }
     }
 
@@ -497,12 +511,22 @@ export class SudokuSolver {
                     const coverCells = CellSet.union(...coverSet);
                     const fins = baseCells.substract(coverCells);
 
-                    const finCoverCells = fins.values().map(fin => CellSet.union(...this.constrainsOfCell.get(fin.idx)!));
-                    const eliminatedCells = CellSet.intersection(...finCoverCells, coverCells)
+                    const allOf = function <T>(iterable: Iterable<T>, predicate: (value: T) => boolean) {
+                        for (const value of iterable) {
+                            if (!predicate(value)) {
+                                return false;
+                            }
+                        }
+                        return true;
+                    }
 
                     let changed = false;
-                    for (const cell of eliminatedCells) {
+                    for (const cell of coverCells) {
                         if (baseCells.has(cell)) {
+                            continue;
+                        }
+                        let canBeEliminated = allOf(fins, (fin) => this.constrainsOfCell.get(fin.idx)!.some(constraint => constraint.has(cell)));
+                        if (!canBeEliminated) {
                             continue;
                         }
                         this.deleteCandidate(state, cell, value);
