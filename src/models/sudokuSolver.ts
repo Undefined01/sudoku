@@ -163,7 +163,7 @@ export class SudokuSolver {
     }
 
     solveOneStep() {
-        const solvers = [this.fullHouse, this.nakedSingle, this.solveHiddenSingle, this.LockedCandidatesType, this.hiddenSubset, this.nakedSubset, this.basicFish, this.complexFish];
+        const solvers = [this.fullHouse, this.nakedSingle, this.solveHiddenSingle, this.LockedCandidatesType, this.hiddenSubset, this.nakedSubset, this.basicFish, this.finnedFish, this.complexFish];
         console.time("solveOneStep");
         for (const solver of solvers) {
             if (this.sudoku.updateState(true, solver.bind(this))) {
@@ -496,8 +496,6 @@ export class SudokuSolver {
                     const baseCells = CellSet.union(...baseSet);
                     const coverCells = CellSet.union(...coverSet);
                     const fins = baseCells.substract(coverCells);
-
-                    if (fins.size !== 0) return false;
 
                     const finCoverCells = fins.values().map(fin => CellSet.union(...this.constrainsOfCell.get(fin.idx)!));
                     const eliminatedCells = CellSet.intersection(...finCoverCells, coverCells)
