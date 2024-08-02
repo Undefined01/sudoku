@@ -20,7 +20,7 @@ onMounted(() => {
   document.addEventListener("keydown", function (event) {
     const key = event.code;
 
-    console.log(event.key, event.code, event)
+    // console.log(event.key, event.code, event)
 
     if (sudoku.selectedCells.size === 0) {
       return;

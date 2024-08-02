@@ -3,115 +3,136 @@ import { CellIndex, CellPosition } from "./sudoku";
 
 export class CellSet {
   [immerable] = true;
-  cells: Map<CellIndex, CellPosition> = new Map();
+  static bitsetForCell: Array<bigint> = Array.from({ length: 81 }, (_, idx) => BigInt(1) << BigInt(idx));
+  static deleteMaskForCell: Array<bigint> = Array.from({ length: 81 }, (_, idx) => ~CellSet.bitsetForCell[idx]);
+  static bitint0: bigint = BigInt(0);
+  static bitint32: bigint = BigInt(32);
+  static bitint64: bigint = BigInt(64);
+  static bitset32Mask: bigint = BigInt(0xffffffff);
+  static cells: Array<CellPosition> = Array.from({ length: 81 }, (_, idx) => new CellPosition({
+    row: Math.floor(idx / 9),
+    column: idx % 9,
+    idx
+  }));
+
+  cells: Array<CellPosition> | undefined = undefined;
+  bitset: bigint
   name: string = "";
 
-  constructor(...cells: CellPosition[]) {
-    cells.forEach((cell) => this.cells.set(cell.idx, cell));
+  constructor(value: bigint = BigInt(0)) {
+    this.bitset = value;
+  }
+
+  static fromPositions(positions: Array<CellPosition>): CellSet {
+    const set = new CellSet();
+    for (const cell of positions) {
+      set.add(cell);
+    }
+    set.cells = positions;
+    return set;
+  }
+
+  static popcnt32(n: number): number {
+    n = n - ((n >> 1) & 0x55555555);
+    n = (n & 0x33333333) + (n >> 2) & 0x33333333;
+    n = (n + (n >> 4)) & 0x0F0F0F0F;
+    return (n * 0x01010101) >> 24;
+  }
+
+  isEmpty() {
+    return this.bitset === CellSet.bitint0;
   }
 
   get size() {
-    return this.cells.size;
+    let cnt = CellSet.popcnt32(Number(this.bitset & CellSet.bitset32Mask))
+    cnt += CellSet.popcnt32(Number((this.bitset >> CellSet.bitint32) & CellSet.bitset32Mask))
+    cnt += CellSet.popcnt32(Number((this.bitset >> CellSet.bitint64) & CellSet.bitset32Mask))
+    return cnt;
   }
 
   add(cell: CellPosition) {
-    this.cells.set(cell.idx, cell);
+    this.cells = undefined;
+    this.bitset |= CellSet.bitsetForCell[cell.idx];
   }
 
   has(cell: CellPosition) {
-    return this.cells.has(cell.idx);
+    return this.bitset & CellSet.bitsetForCell[cell.idx] ? true : false;
   }
 
   delete(cell: CellPosition) {
-    this.cells.delete(cell.idx);
+    this.cells = undefined;
+    this.bitset &= CellSet.deleteMaskForCell[cell.idx];
   }
 
   clear() {
-    this.cells.clear();
+    this.cells = undefined;
+    this.bitset = BigInt(0);
   }
 
   equals(other: CellSet): boolean {
-    if (this.size !== other.size) {
-      return false;
-    }
-    for (const cell of this.cells.values()) {
-      if (!other.has(cell)) {
-        return false;
-      }
-    }
-    return true;
+    return this.bitset === other.bitset;
   }
 
   values(): Array<CellPosition> {
-    return Array.from(this.cells.values());
+    if (this.cells) {
+      return this.cells;
+    }
+    this.cells = [];
+    const valuesForNumber32 = (cells: Array<CellPosition>, n: number, shift: number) => {
+      for (let idx = 0; idx < 32; idx++) {
+        if (n & (1 << idx)) {
+          cells.push(CellSet.cells[idx + shift]);
+        }
+      }
+    }
+    valuesForNumber32(this.cells, Number(this.bitset & CellSet.bitset32Mask), 0);
+    valuesForNumber32(this.cells, Number((this.bitset >> CellSet.bitint32) & CellSet.bitset32Mask), 32);
+    valuesForNumber32(this.cells, Number((this.bitset >> CellSet.bitint64) & CellSet.bitset32Mask), 64);
+    return this.cells;
   }
 
   forEach(callback: (cell: CellPosition) => void) {
-    this.cells.forEach((cell) => callback(cell));
+    this.values().forEach(callback);
   }
 
   isSubsetOf(other: CellSet): boolean {
-    for (const cell of this.cells.values()) {
-      if (!other.has(cell)) {
-        return false;
-      }
-    }
-    return true;
+    return (this.bitset & other.bitset) === this.bitset;
   }
 
   // this - other
   substract(other: CellSet): CellSet {
-    const difference = new CellSet();
-    for (const cell of this.cells.values()) {
-      if (!other.has(cell)) {
-        difference.add(cell);
-      }
-    }
-    return difference;
+    return new CellSet(this.bitset & ~other.bitset);
   }
 
   union(other: CellSet): CellSet {
-    const union = new CellSet();
-    for (const cell of this.cells.values()) {
-      union.add(cell);
-    }
-    for (const cell of other.cells.values()) {
-      union.add(cell);
-    }
-    return union;
+    return new CellSet(this.bitset | other.bitset);
   }
 
   intersection(other: CellSet): CellSet {
-    const intersection = new CellSet();
-    for (const cell of this.cells.values()) {
-      if (other.has(cell)) {
-        intersection.add(cell);
-      }
-    }
-    return intersection;
+    return new CellSet(this.bitset & other.bitset);
   }
 
   static union(...sets: CellSet[]): CellSet {
     const union = new CellSet();
     sets.forEach((set) => {
-      set.forEach((cell) => union.add(cell));
+      union.bitset |= set.bitset;
     });
     return union;
   }
 
   static intersection(...sets: CellSet[]): CellSet {
-    const intersection = new CellSet();
-    const [first, ...rest] = sets;
-    first.forEach((cell) => {
-      if (rest.every((set) => set.has(cell))) {
-        intersection.add(cell);
-      }
-    });
+    if (sets.length === 0) {
+      throw new Error("No sets to intersect");
+    }
+    const intersection = new CellSet(sets[0].bitset);
+    sets.forEach((set) => {
+      intersection.bitset &= set.bitset
+    })
     return intersection;
   }
 
   [Symbol.iterator]() {
-    return this.cells.values();
+    return this.values()[Symbol.iterator]();
   }
 
   toString() {

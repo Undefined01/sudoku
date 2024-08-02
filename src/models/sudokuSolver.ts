@@ -247,7 +247,7 @@ export class SudokuSolver {
     LockedCandidatesType(state: SudokuState) {
         const check = (houseA: CellSet, houseB: CellSet) => {
             const intersection = houseA.intersection(houseB);
-            if (intersection.size === 0) {
+            if (intersection.isEmpty()) {
                 return false;
             }
             for (let value = 1; value <= 9; value++) {
@@ -318,7 +318,7 @@ export class SudokuSolver {
             const possibleHouseCellsForCandidate = new Map<number, CellSet>();
             for (let value = 1; value <= 9; value++) {
                 const possibleCells = this.possibleCellsForCandidate.get(value)?.intersection(cells);
-                if (possibleCells === undefined || possibleCells.size === 0) {
+                if (possibleCells === undefined || possibleCells.isEmpty()) {
                     continue;
                 }
                 possibleHouseCellsForCandidate.set(value, possibleCells)
@@ -370,7 +370,7 @@ export class SudokuSolver {
             }
             for (const subset of SudokuSolver.permutations(possibleValues, size)) {
                 const valueUnion = subset.reduce((acc, [_, candidates]) => { candidates.forEach(n => acc.add(n)); return acc }, new Set<number>());
-                const cellsInSubset = new CellSet(...subset.map(([cell, _]) => cell));
+                const cellsInSubset = CellSet.fromPositions(subset.map(([cell, _]) => cell));
                 const cellIdsInSubset = new Set(subset.map(([cell, _]) => cell.idx));
                 if (valueUnion.size <= size) {
                     let changed = false;
@@ -530,7 +530,7 @@ export class SudokuSolver {
                             continue;
                         }
                         this.deleteCandidate(state, cell, value);
-                        const hasFin = fins.size !== 0
+                        const hasFin = !fins.isEmpty()
                         console.log(`${hasFin ? "Finned" : "Complex"} ${fishNames[size]}: for ${value}, ${baseSet.map(s => s.name)} is covered by ${coverSet.map(s => s.name)}${hasFin ? ` with fin ${fins}` : ""} => ${cell}<>${value}`);
                         changed = true;
                     }
@@ -548,7 +548,7 @@ export class SudokuSolver {
                 } else {
                     for (const colSet of SudokuSolver.permutations([...possibleCellsInColumns, ...possibleCellsInBlocks], size)) {
                         // 两两之间互不相交
-                        if ([...SudokuSolver.permutations(colSet, 2)].some(set => CellSet.intersection(...set).size !== 0)) {
+                        if ([...SudokuSolver.permutations(colSet, 2)].some(set => !CellSet.intersection(...set).isEmpty())) {
                             continue;
                         }
                         for (const rowSet of SudokuSolver.permutations(possibleCellsInRows, size)) {
@@ -559,7 +559,7 @@ export class SudokuSolver {
                     }
                     for (const rowSet of SudokuSolver.permutations([...possibleCellsInRows, ...possibleCellsInBlocks], size)) {
                         // 两两之间互不相交
-                        if ([...SudokuSolver.permutations(rowSet, 2)].some(set => CellSet.intersection(...set).size !== 0)) {
+                        if ([...SudokuSolver.permutations(rowSet, 2)].some(set => !CellSet.intersection(...set).isEmpty())) {
                             continue;
                         }
                         for (const colSet of SudokuSolver.permutations(possibleCellsInColumns, size)) {

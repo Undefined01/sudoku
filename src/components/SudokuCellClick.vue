@@ -54,7 +54,7 @@ async function startMultiselect(
   multiselectedCells.add(cellPosition);
   const selectionMode = selectionEventHandler.setSelection({
     reference: cellPosition,
-    cells: new CellSet(cellPosition),
+    cells: CellSet.fromPositions([cellPosition]),
     clearPreviousSelection: !event.ctrlKey && !event.shiftKey,
   });
   longPressTimer = setTimeout(() => {
@@ -65,7 +65,7 @@ async function startMultiselect(
       });
       selectionEventHandler.setSelection({
         reference: cellPosition,
-        cells: new CellSet(cellPosition),
+        cells: CellSet.fromPositions([cellPosition]),
         clearPreviousSelection: !event.ctrlKey && !event.shiftKey,
         mode: selectionMode,
       });
