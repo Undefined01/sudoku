@@ -8,7 +8,8 @@ import { Sudoku } from "@/models/sudoku";
 import { defaultSettings } from "@/models/settings";
 
 const sudoku = Sudoku.fromString(
-  ".....6....637....22.....15.6..2.85....8...6....46.5..3.36.....11....328....1.....",
+  "..67...91..9....623............3...4..72...1.4....1....31..8.75...9......65....3.",
+  // ".5..346..........8.3.879....15.....6...26..5.......92..4..27.13.73...........87..",
 );
 const settings = defaultSettings;
 provide("sudoku", sudoku);

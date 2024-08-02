@@ -8,10 +8,21 @@ import { shallowReactive, ShallowReactive } from "vue";
 export { CellSet };
 
 export type CellIndex = number;
-export type CellPosition = {
+export class CellPosition {
   row: number;
   column: number;
   idx: CellIndex;
+
+  constructor(options: {row: number, column: number, idx: CellIndex}) {
+    const { row, column, idx } = options;
+    this.row = row;
+    this.column = column;
+    this.idx = idx;
+  }
+
+  toString() {
+    return `r${this.row + 1}c${this.column + 1}`;
+  }
 };
 
 export class SudokuCell {
@@ -102,6 +113,10 @@ export class SudokuState {
   getCell(position: CellPosition) {
     return this.cells[position.idx];
   }
+
+  getCellByIdx(idx: number) {
+    return this.cells[idx];
+  }
 }
 
 export class Sudoku {
@@ -124,11 +139,11 @@ export class Sudoku {
       { length: rows * columns },
       (_, idx) =>
         new SudokuCell({
-          position: {
+          position: new CellPosition({
             row: Math.floor(idx / columns),
             column: idx % columns,
             idx,
-          },
+          }),
           isGiven: false,
           value: undefined,
         }),
@@ -151,7 +166,11 @@ export class Sudoku {
   }
 
   getCell(position: CellPosition) {
-    return this.self.state.cells[position.idx];
+    return this.self.state.getCell(position);
+  }
+
+  getCellByIdx(idx: number) {
+    return this.self.state.getCellByIdx(idx);
   }
 
   getCellPosition(row: number, column: number): CellPosition {
