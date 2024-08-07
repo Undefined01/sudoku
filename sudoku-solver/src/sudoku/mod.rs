@@ -162,6 +162,7 @@ pub struct Step {
     pub positions: Vec<StepPosition>,
 }
 
+#[wasm_bindgen(getter_with_clone)]
 impl Step {
     pub(crate) fn new(kind: StepKind, rule: StepRule) -> Self {
         Self {
@@ -194,7 +195,7 @@ impl Step {
         self.positions.is_empty()
     }
 
-    pub(crate) fn to_string(&self, sudoku: &Sudoku) -> String {
+    pub fn to_string(&self, sudoku: &Sudoku) -> String {
         let mut f = String::new();
         use std::fmt::Write;
         match self.kind {

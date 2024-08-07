@@ -3,7 +3,7 @@ import { mdiAutoFix, mdiBackspaceOutline, mdiPalette, mdiRedo, mdiStrategy, mdiU
 
 import { inject, ref } from "vue";
 import { Sudoku } from "@/models/sudoku";
-import { SudokuSolver } from "@/models/sudokuSolver";
+import { Sudoku as RustSudoku, SudokuSolver } from "sudoku-solver";
 
 const sudoku = inject<Sudoku>("sudoku")!;
 
@@ -42,20 +42,44 @@ const toggleValue = (value: number) => {
 type PadMode = "value" | "candidate" | "pencilMark" | "color";
 const mode = ref<PadMode>("value");
 
-
-const solver = new SudokuSolver(sudoku)
+let rustSudoku = RustSudoku.from_str(sudoku.toValueString());
+let solver = SudokuSolver.new(rustSudoku);
+const fillPencilMarks = () => {
+  rustSudoku = RustSudoku.from_str(sudoku.toValueString());
+  solver = SudokuSolver.new(rustSudoku);
+  solver.initialize_candidates(rustSudoku);
+  const candidateStr = rustSudoku.to_candidate_string();
+  sudoku.updateState(true, (state) => {
+    state.fromCandidateString(candidateStr);
+  });
+};
+const solveOneStep = () => {
+  console.time("wasm solveOneStep");
+  const step = solver.solve_one_step(rustSudoku);
+  console.timeEnd("wasm solveOneStep");
+  if (step !== undefined) {
+    console.log(step.to_string(rustSudoku));
+    solver.apply_step(rustSudoku, step);
+    const candidateStr = rustSudoku.to_candidate_string();
+    sudoku.updateState(true, (state) => {
+      state.fromCandidateString(candidateStr);
+    });
+  } else {
+    console.log("No avaliable step");
+  }
+};
 </script>
 
 <template>
   <div class="sudokupad-container">
-    <v-btn class="pad-button" @click="() => solver.fillPencilMarks()">
+    <v-btn class="pad-button" @click="() => fillPencilMarks()">
       <v-icon :icon="mdiAutoFix"/>
       <v-tooltip
         activator="parent"
         location="bottom"
       >自动填充 pencil marks</v-tooltip>
     </v-btn>
-    <v-btn class="pad-button" @click="() => solver.solveOneStep()">
+    <v-btn class="pad-button" @click="() => solveOneStep()">
       <v-icon :icon="mdiStrategy"/>
       <v-tooltip
         activator="parent"

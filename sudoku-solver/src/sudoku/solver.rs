@@ -17,6 +17,7 @@ pub struct SudokuSolver {
     pub(crate) cells_in_blocks: Vec<NamedCellSet>,
 }
 
+#[wasm_bindgen]
 impl SudokuSolver {
     pub fn new(sudoku: &Sudoku) -> Self {
         let mut all_constraints = vec![];
@@ -424,38 +425,22 @@ impl SudokuSolver {
         value: CellValue,
         rule: StepRule,
     ) -> Option<Step> {
-        let start_time = std::time::Instant::now();
         let base_cells = CellSet::union_multiple(base_set.iter().map(|&s| &**s));
         let cover_cells = CellSet::union_multiple(cover_set.iter().map(|&s| &**s));
         let fins = &base_cells - &cover_cells;
         let mut eliminated_cells = &cover_cells - &base_cells;
         if eliminated_cells.is_empty() {
-            let elapsed = start_time.elapsed();
-            unsafe {
-                COUNT += 1;
-                TOTAL_TIME += elapsed;
-            };
             return None;
         }
 
         let allow_fins = rule != StepRule::BasicFish;
         if !fins.is_empty() && !allow_fins {
-            let elapsed = start_time.elapsed();
-            unsafe {
-                COUNT += 1;
-                TOTAL_TIME += elapsed;
-            };
             return None;
         }
         for fin in fins.iter() {
             eliminated_cells &= &self.house_union_of_cell[fin as usize];
         }
         if eliminated_cells.is_empty() {
-            let elapsed = start_time.elapsed();
-            unsafe {
-                COUNT += 1;
-                TOTAL_TIME += elapsed;
-            };
             return None;
         }
 
@@ -479,11 +464,6 @@ impl SudokuSolver {
             };
             step.add(reason, cell, value);
         }
-        let elapsed = start_time.elapsed();
-        unsafe {
-            COUNT += 1;
-            TOTAL_TIME += elapsed;
-        };
         return Some(step);
     }
 
@@ -636,8 +616,6 @@ impl SudokuSolver {
         None
     }
 }
-static mut COUNT: i32 = 0;
-static mut TOTAL_TIME: std::time::Duration = std::time::Duration::from_micros(0);
 
 #[cfg(test)]
 mod tests {
@@ -900,14 +878,6 @@ mod tests {
             ],
             &mut sudoku,
         );
-        unsafe {
-            println!(
-                "check fish {} times, total {:?}, average {:?}",
-                COUNT,
-                TOTAL_TIME,
-                TOTAL_TIME / COUNT as u32
-            );
-        };
 
         assert_eq!(solver.get_invalid_positions(&sudoku), vec![]);
 

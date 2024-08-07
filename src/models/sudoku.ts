@@ -117,6 +117,48 @@ export class SudokuState {
   getCellByIdx(idx: number) {
     return this.cells[idx];
   }
+
+  // Import sudoku from a string representation like
+  // +----------------+------------------+-----------------+
+  // |   9  234     7 | 23468 13468    5 | 248 123468 1234 |
+  // |   1 2345  2345 |     7  3468  238 |   9  23468  234 |
+  // |   8    6   234 |   234     9  123 |   5      7 1234 |
+  // +----------------+------------------+-----------------+
+  // | 457    8    45 |   234   347    6 |   1    234    9 |
+  // |   3    1     6 |   248     5    9 | 248    248    7 |
+  // |   2   47     9 |     1  3478  378 |   6      5   34 |
+  // +----------------+------------------+-----------------+
+  // | 457 3457 13458 |   358     2 1378 |  47      9    6 |
+  // | 567    9  1235 |   356  1367    4 |  27     12    8 |
+  // | 467  247  1248 |     9  1678  178 |   3    124    5 |
+  // +----------------+------------------+-----------------+
+  fromCandidateString(code: string) {
+    let candidatesRegex = /\d+/g;
+    let allCandidates = [];
+    while (true) {
+      const candidates = candidatesRegex.exec(code);
+      if (!candidates) {
+        break;
+      }
+      allCandidates.push(candidates[0]);
+    }
+    if (allCandidates.length !== 81) {
+      throw new Error("Invalid candidate string");
+    }
+    for (let i = 0; i < allCandidates.length; i++) {
+      const cell = this.cells[i];
+      const candidates = allCandidates[i].split("").map(Number);
+      if (candidates.length === 1) {
+        cell.isGiven = true;
+        cell.value = candidates[0];
+      } else {
+        cell.pencilMarks.clear();
+        for (const candidate of candidates) {
+          cell.pencilMarks.add(candidate);
+        }
+      }
+    }
+  }
 }
 
 export class Sudoku {
@@ -207,6 +249,12 @@ export class Sudoku {
     }
     this.self.currentStateIndex += count;
     this.self.state = this.self.stateHistory[this.self.currentStateIndex];
+  }
+
+  toValueString() {
+    return this.self.state.cells
+      .map((cell) => (cell.value === undefined ? "." : cell.value))
+      .join("");
   }
 
   // Import a Sudoku from a string representation like
