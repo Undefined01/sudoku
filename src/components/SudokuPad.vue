@@ -1,5 +1,12 @@
 <script setup lang="ts">
-import { mdiAutoFix, mdiBackspaceOutline, mdiPalette, mdiRedo, mdiStrategy, mdiUndo } from "@mdi/js";
+import {
+  mdiAutoFix,
+  mdiBackspaceOutline,
+  mdiPalette,
+  mdiRedo,
+  mdiStrategy,
+  mdiUndo,
+} from "@mdi/js";
 
 import { inject, ref } from "vue";
 import { Sudoku } from "@/models/sudoku";
@@ -33,7 +40,7 @@ const toggleValue = (value: number) => {
         state.getCell(cell).toggleCandidate(value);
       }
       if (mode.value === "pencilMark") {
-        state.getCell(cell).togglePencilMark(value)
+        state.getCell(cell).togglePencilMark(value);
       }
     });
   });
@@ -73,18 +80,14 @@ const solveOneStep = () => {
 <template>
   <div class="sudokupad-container">
     <v-btn class="pad-button" @click="() => fillPencilMarks()">
-      <v-icon :icon="mdiAutoFix"/>
-      <v-tooltip
-        activator="parent"
-        location="bottom"
-      >自动填充 pencil marks</v-tooltip>
+      <v-icon :icon="mdiAutoFix" />
+      <v-tooltip activator="parent" location="bottom"
+        >自动填充 pencil marks</v-tooltip
+      >
     </v-btn>
     <v-btn class="pad-button" @click="() => solveOneStep()">
-      <v-icon :icon="mdiStrategy"/>
-      <v-tooltip
-        activator="parent"
-        location="bottom"
-      >求解下一步</v-tooltip>
+      <v-icon :icon="mdiStrategy" />
+      <v-tooltip activator="parent" location="bottom">求解下一步</v-tooltip>
     </v-btn>
     <v-btn class="pad-button" @click="() => toggleValue(1)">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">

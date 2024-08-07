@@ -3,20 +3,30 @@ import { CellPosition } from "./sudoku";
 
 export class CellSet {
   [immerable] = true;
-  static bitsetForCell: Array<bigint> = Array.from({ length: 81 }, (_, idx) => BigInt(1) << BigInt(idx));
-  static deleteMaskForCell: Array<bigint> = Array.from({ length: 81 }, (_, idx) => ~CellSet.bitsetForCell[idx]);
+  static bitsetForCell: Array<bigint> = Array.from(
+    { length: 81 },
+    (_, idx) => BigInt(1) << BigInt(idx),
+  );
+  static deleteMaskForCell: Array<bigint> = Array.from(
+    { length: 81 },
+    (_, idx) => ~CellSet.bitsetForCell[idx],
+  );
   static bitint0: bigint = BigInt(0);
   static bitint32: bigint = BigInt(32);
   static bitint64: bigint = BigInt(64);
   static bitset32Mask: bigint = BigInt(0xffffffff);
-  static cells: Array<CellPosition> = Array.from({ length: 81 }, (_, idx) => new CellPosition({
-    row: Math.floor(idx / 9),
-    column: idx % 9,
-    idx
-  }));
+  static cells: Array<CellPosition> = Array.from(
+    { length: 81 },
+    (_, idx) =>
+      new CellPosition({
+        row: Math.floor(idx / 9),
+        column: idx % 9,
+        idx,
+      }),
+  );
 
   cells: Array<CellPosition> | undefined = undefined;
-  bitset: bigint
+  bitset: bigint;
   name: string = "";
 
   constructor(value: bigint = BigInt(0)) {
@@ -34,8 +44,8 @@ export class CellSet {
 
   static popcnt32(n: number): number {
     n = n - ((n >> 1) & 0x55555555);
-    n = (n & 0x33333333) + (n >> 2) & 0x33333333;
-    n = (n + (n >> 4)) & 0x0F0F0F0F;
+    n = ((n & 0x33333333) + (n >> 2)) & 0x33333333;
+    n = (n + (n >> 4)) & 0x0f0f0f0f;
     return (n * 0x01010101) >> 24;
   }
 
@@ -44,9 +54,13 @@ export class CellSet {
   }
 
   get size() {
-    let cnt = CellSet.popcnt32(Number(this.bitset & CellSet.bitset32Mask))
-    cnt += CellSet.popcnt32(Number((this.bitset >> CellSet.bitint32) & CellSet.bitset32Mask))
-    cnt += CellSet.popcnt32(Number((this.bitset >> CellSet.bitint64) & CellSet.bitset32Mask))
+    let cnt = CellSet.popcnt32(Number(this.bitset & CellSet.bitset32Mask));
+    cnt += CellSet.popcnt32(
+      Number((this.bitset >> CellSet.bitint32) & CellSet.bitset32Mask),
+    );
+    cnt += CellSet.popcnt32(
+      Number((this.bitset >> CellSet.bitint64) & CellSet.bitset32Mask),
+    );
     return cnt;
   }
 
@@ -78,16 +92,32 @@ export class CellSet {
       return this.cells;
     }
     this.cells = [];
-    const valuesForNumber32 = (cells: Array<CellPosition>, n: number, shift: number) => {
+    const valuesForNumber32 = (
+      cells: Array<CellPosition>,
+      n: number,
+      shift: number,
+    ) => {
       for (let idx = 0; idx < 32; idx++) {
         if (n & (1 << idx)) {
           cells.push(CellSet.cells[idx + shift]);
         }
       }
-    }
-    valuesForNumber32(this.cells, Number(this.bitset & CellSet.bitset32Mask), 0);
-    valuesForNumber32(this.cells, Number((this.bitset >> CellSet.bitint32) & CellSet.bitset32Mask), 32);
-    valuesForNumber32(this.cells, Number((this.bitset >> CellSet.bitint64) & CellSet.bitset32Mask), 64);
+    };
+    valuesForNumber32(
+      this.cells,
+      Number(this.bitset & CellSet.bitset32Mask),
+      0,
+    );
+    valuesForNumber32(
+      this.cells,
+      Number((this.bitset >> CellSet.bitint32) & CellSet.bitset32Mask),
+      32,
+    );
+    valuesForNumber32(
+      this.cells,
+      Number((this.bitset >> CellSet.bitint64) & CellSet.bitset32Mask),
+      64,
+    );
     return this.cells;
   }
 
@@ -126,8 +156,8 @@ export class CellSet {
     }
     const intersection = new CellSet(sets[0].bitset);
     sets.forEach((set) => {
-      intersection.bitset &= set.bitset
-    })
+      intersection.bitset &= set.bitset;
+    });
     return intersection;
   }
 
@@ -136,6 +166,8 @@ export class CellSet {
   }
 
   toString() {
-    return this.values().map(p => `r${p.row + 1}c${p.column + 1}`).join(',')
+    return this.values()
+      .map((p) => `r${p.row + 1}c${p.column + 1}`)
+      .join(",");
   }
 }

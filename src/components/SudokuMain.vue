@@ -37,10 +37,10 @@ onMounted(() => {
               state.getCell(cell).setValue(undefined);
             }
             if (noModifier || event.ctrlKey) {
-              state.getCell(cell).clearCandidates()
+              state.getCell(cell).clearCandidates();
             }
             if (noModifier || event.shiftKey) {
-              state.getCell(cell).clearPencilMarks()
+              state.getCell(cell).clearPencilMarks();
             }
           });
         });

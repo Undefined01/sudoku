@@ -13,7 +13,7 @@ export class CellPosition {
   column: number;
   idx: CellIndex;
 
-  constructor(options: {row: number, column: number, idx: CellIndex}) {
+  constructor(options: { row: number; column: number; idx: CellIndex }) {
     const { row, column, idx } = options;
     this.row = row;
     this.column = column;
@@ -23,7 +23,7 @@ export class CellPosition {
   toString() {
     return `r${this.row + 1}c${this.column + 1}`;
   }
-};
+}
 
 export class SudokuCell {
   [immerable] = true;
@@ -59,9 +59,9 @@ export class SudokuCell {
     }
     this.value = undefined;
     if (this.candidates.has(candidate)) {
-      this.candidates.delete(candidate)
+      this.candidates.delete(candidate);
     } else {
-      this.candidates.add(candidate)
+      this.candidates.add(candidate);
     }
     console.log(this.candidates);
   }
@@ -76,9 +76,9 @@ export class SudokuCell {
     }
     this.value = undefined;
     if (this.pencilMarks.has(pencilMark)) {
-      this.pencilMarks.delete(pencilMark)
+      this.pencilMarks.delete(pencilMark);
     } else {
-      this.pencilMarks.add(pencilMark)
+      this.pencilMarks.add(pencilMark);
     }
   }
 
@@ -133,8 +133,8 @@ export class SudokuState {
   // | 467  247  1248 |     9  1678  178 |   3    124    5 |
   // +----------------+------------------+-----------------+
   fromCandidateString(code: string) {
-    let candidatesRegex = /\d+/g;
-    let allCandidates = [];
+    const candidatesRegex = /\d+/g;
+    const allCandidates = [];
     while (true) {
       const candidates = candidatesRegex.exec(code);
       if (!candidates) {
@@ -220,10 +220,13 @@ export class Sudoku {
       .position;
   }
 
-  updateState(_immediateRecord: boolean, f: (state: SudokuState) => void): boolean {
+  updateState(
+    _immediateRecord: boolean,
+    f: (state: SudokuState) => void,
+  ): boolean {
     const newState = produce(this.self.state, f);
     if (this.self.state === newState) {
-        return false
+      return false;
     }
     this.self.stateHistory = this.self.stateHistory.slice(
       0,
@@ -232,7 +235,7 @@ export class Sudoku {
     this.self.stateHistory.push(newState);
     this.self.currentStateIndex += 1;
     this.self.state = newState;
-    return true
+    return true;
   }
 
   undo(count: number = 1) {
