@@ -8,16 +8,14 @@ use itertools::Itertools;
 use std::fmt::Debug;
 use wasm_bindgen::prelude::*;
 
-const UNSET: u8 = 255;
-
 type CellIndex = u8;
 type CellValue = u8;
 
 #[wasm_bindgen]
 pub struct Sudoku {
-    board: Vec<CellValue>,
+    board: Vec<Option<CellValue>>,
     // cell position -> possible values at that cell
-    candidates: Vec<Vec<CellIndex>>,
+    candidates: Vec<Vec<CellValue>>,
     // value -> possible cell positions for that value
     possible_positions: Vec<CellSet>,
 }
@@ -46,7 +44,7 @@ impl Sudoku {
         &self.possible_positions[value as usize]
     }
 
-    pub(crate) fn get_cell_value(&self, idx: CellIndex) -> CellValue {
+    pub(crate) fn get_cell_value(&self, idx: CellIndex) -> Option<CellValue> {
         self.board[idx as usize]
     }
 
@@ -63,9 +61,9 @@ impl Sudoku {
         for ch in str.chars() {
             if ch.is_digit(10) {
                 let digit = ch.to_digit(10).unwrap() as u8;
-                board.push(digit);
+                board.push(Some(digit));
             } else if ch == '.' || ch == '_' {
-                board.push(UNSET);
+                board.push(None);
             }
         }
         let candidates = vec![vec![]; 81];
@@ -83,10 +81,10 @@ impl Sudoku {
             for col in 0..9 {
                 let idx = self.get_cell_position(row, col);
                 let value = self.get_cell_value(idx);
-                if value == UNSET {
-                    s.push('.');
-                } else {
+                if let Some(value) = value {
                     s.push_str(&value.to_string());
+                } else {
+                    s.push('.');
                 }
             }
         }
@@ -99,8 +97,8 @@ impl Sudoku {
             .iter()
             .enumerate()
             .map(|(idx, candidates)| {
-                if candidates.is_empty() {
-                    return format!("{}", self.board[idx]);
+                if let Some(value) = self.get_cell_value(idx as u8) {
+                    return format!("{}", value);
                 }
                 return candidates.iter().map(|&x| x.to_string()).join("");
             })
@@ -207,7 +205,7 @@ impl Step {
                         self.rule,
                         position.reason,
                         sudoku.get_cell_name(position.cell_index),
-                        position.value
+                        position.value,
                     )
                     .unwrap();
                 }
@@ -220,7 +218,7 @@ impl Step {
                         self.rule,
                         position.reason,
                         sudoku.get_cell_name(position.cell_index),
-                        position.value
+                        position.value,
                     )
                     .unwrap();
                 }

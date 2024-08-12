@@ -1,15 +1,17 @@
+use arrayvec::ArrayVec;
 use itertools::Itertools;
 
 use super::{CellIndex, Sudoku};
 
-use std::cell::OnceCell;
-use std::iter::Copied;
+use std::cell::{LazyCell, OnceCell};
+use std::iter::{Copied, FromIterator};
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Deref, DerefMut, Sub, SubAssign};
+
 
 #[derive(Clone)]
 pub struct CellSet {
     bitset: u128,
-    cells: OnceCell<Vec<CellIndex>>,
+    cells: OnceCell<ArrayVec<CellIndex, 81>>,
 }
 
 impl CellSet {
@@ -32,7 +34,8 @@ impl CellSet {
         for cell in &cell_positions {
             set.add(*cell);
         }
-        set.cells = OnceCell::from(cell_positions);
+        let array = ArrayVec::from_iter(cell_positions);
+        set.cells = array.into();
         set
     }
 
@@ -87,11 +90,17 @@ impl CellSet {
     pub fn iter(&self) -> Copied<std::slice::Iter<CellIndex>> {
         self.cells
             .get_or_init(|| {
-                let mut cells = vec![];
+                let mut cells = ArrayVec::new();
                 if !self.is_empty() {
-                    for i in 0..81 {
-                        if self.has(i) {
-                            cells.push(i);
+                    for idx in (0..81).step_by(9) {
+                        let bits = ((self.bitset >> idx) & 0x1FF) as u32;
+                        if bits == 0 {
+                            continue;
+                        }
+                        for i in 0..9 {
+                            if (bits & (1 << i)) != 0 {
+                                cells.push(idx + i);
+                            }
                         }
                     }
                 }
@@ -171,23 +180,33 @@ impl<'a> IntoIterator for &'a CellSet {
 #[derive(Clone)]
 pub struct NamedCellSet {
     name: String,
+    idx: usize,
     cells: CellSet,
 }
 
 impl NamedCellSet {
-    pub fn new(name: String) -> Self {
+    pub fn new(name: String, idx: usize) -> Self {
         NamedCellSet {
             name,
+            idx,
             cells: CellSet::new(),
         }
     }
 
     pub fn from_cellset(name: String, cells: CellSet) -> Self {
-        NamedCellSet { name, cells }
+        NamedCellSet {
+            name,
+            cells,
+            idx: 100,
+        }
     }
 
     pub fn name(&self) -> &str {
         &self.name
+    }
+
+    pub fn idx(&self) -> usize {
+        self.idx
     }
 }
 

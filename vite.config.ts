@@ -14,5 +14,8 @@ export default defineConfig((configEnv) => ({
     alias: {
       '@': '/src'
     }
+  },
+  build: {
+    target: 'esnext'
   }
 }))

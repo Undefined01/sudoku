@@ -1,6 +1,7 @@
 use super::utils::{CellSet, NamedCellSet};
-use super::{CellIndex, CellValue, Step, StepKind, StepRule, Sudoku, UNSET};
+use super::{CellIndex, CellValue, Step, StepKind, StepRule, Sudoku};
 
+use std::cell::OnceCell;
 use std::collections::HashSet;
 
 use itertools::Itertools;
@@ -15,6 +16,8 @@ pub struct SudokuSolver {
     pub(crate) cells_in_rows: Vec<NamedCellSet>,
     pub(crate) cells_in_columns: Vec<NamedCellSet>,
     pub(crate) cells_in_blocks: Vec<NamedCellSet>,
+
+    pub(crate) possible_positions_for_house_and_value: Vec<OnceCell<NamedCellSet>>,
 }
 
 #[wasm_bindgen]
@@ -26,10 +29,14 @@ impl SudokuSolver {
         let mut cells_in_rows = vec![];
         let mut cells_in_columns = vec![];
         let mut cells_in_blocks = vec![];
+        let possible_positions_for_house_and_value = vec![OnceCell::new(); 27 * 9];
 
         for block_x in (0..9).step_by(3) {
             for block_y in (0..9).step_by(3) {
-                let mut block_set = NamedCellSet::new(format!("b{}", block_x + block_y / 3 + 1));
+                let mut block_set = NamedCellSet::new(
+                    format!("b{}", block_x + block_y / 3 + 1),
+                    block_x + block_y / 3,
+                );
                 for x in 0..3 {
                     for y in 0..3 {
                         let pos = sudoku.get_cell_position(block_x + x, block_y + y);
@@ -42,7 +49,7 @@ impl SudokuSolver {
         }
 
         for row in 0..9 {
-            let mut row_set = NamedCellSet::new(format!("r{}", row + 1));
+            let mut row_set = NamedCellSet::new(format!("r{}", row + 1), 9 + row);
             for col in 0..9 {
                 let pos = sudoku.get_cell_position(row, col);
                 row_set.add(pos);
@@ -52,7 +59,7 @@ impl SudokuSolver {
         }
 
         for col in 0..9 {
-            let mut col_set = NamedCellSet::new(format!("c{}", col + 1));
+            let mut col_set = NamedCellSet::new(format!("c{}", col + 1), 18 + col);
             for row in 0..9 {
                 let pos = sudoku.get_cell_position(row, col);
                 col_set.add(pos);
@@ -82,6 +89,7 @@ impl SudokuSolver {
             cells_in_rows,
             cells_in_columns,
             cells_in_blocks,
+            possible_positions_for_house_and_value,
         }
     }
 
@@ -89,7 +97,7 @@ impl SudokuSolver {
         let mut invalid_positions = vec![];
         for house in self.all_constraints.iter() {
             for (i, cell1) in house.iter().enumerate() {
-                if sudoku.get_cell_value(cell1) == UNSET {
+                if sudoku.get_cell_value(cell1).is_none() {
                     continue;
                 }
                 for cell2 in house.iter().take(i) {
@@ -104,7 +112,7 @@ impl SudokuSolver {
 
     pub fn initialize_candidates(&self, sudoku: &mut Sudoku) {
         for cell in 0..81 {
-            if sudoku.get_cell_value(cell) == UNSET {
+            if sudoku.get_cell_value(cell).is_none() {
                 let mut candidates: HashSet<_> = (1..=9).collect();
 
                 for constraint in self.constraints_of_cell[cell as usize].iter() {
@@ -112,8 +120,9 @@ impl SudokuSolver {
                         if cell == other_cell {
                             continue;
                         }
-                        let other_value = sudoku.get_cell_value(other_cell);
-                        candidates.remove(&other_value);
+                        if let Some(other_value) = sudoku.get_cell_value(other_cell) {
+                            candidates.remove(&other_value);
+                        }
                     }
                 }
 
@@ -124,11 +133,29 @@ impl SudokuSolver {
         }
     }
 
+    fn get_possible_cells_for_house_and_value(
+        &self,
+        sudoku: &Sudoku,
+        house: &NamedCellSet,
+        value: CellValue,
+    ) -> &NamedCellSet {
+        debug_assert!(house.idx() < 27);
+        debug_assert!(value >= 1 && value <= 9);
+        let idx = house.idx() * 9 + value as usize - 1;
+        self.possible_positions_for_house_and_value[idx].get_or_init(|| {
+            NamedCellSet::from_cellset(
+                house.name().to_string(),
+                sudoku.get_possible_cells(value) & house,
+            )
+        })
+    }
+
     pub fn apply_step(&mut self, sudoku: &mut Sudoku, step: &Step) {
+        self.possible_positions_for_house_and_value = vec![OnceCell::new(); 27 * 9];
         match step.kind {
             StepKind::ValueSet => {
                 for position in step.positions.iter() {
-                    sudoku.board[position.cell_index as usize] = position.value;
+                    sudoku.board[position.cell_index as usize] = Some(position.value);
                     for cell in self.house_union_of_cell[position.cell_index as usize].iter() {
                         if cell == position.cell_index {
                             continue;
@@ -152,16 +179,16 @@ impl SudokuSolver {
         }
     }
 
-    pub fn solve_full_house(&self, sudoku: &mut Sudoku) -> Option<Step> {
+    pub fn solve_full_house(&self, sudoku: &Sudoku) -> Option<Step> {
         for house in self.all_constraints.iter() {
             let unfilled_cells_count = house
                 .iter()
-                .filter(|&cell| sudoku.get_cell_value(cell) == UNSET)
+                .filter(|&cell| sudoku.get_cell_value(cell).is_none())
                 .count();
             if unfilled_cells_count == 1 {
                 let unfilled_cell = house
                     .iter()
-                    .filter(|&cell| sudoku.get_cell_value(cell) == UNSET)
+                    .filter(|&cell| sudoku.get_cell_value(cell).is_none())
                     .next()
                     .unwrap();
                 let missing_value = sudoku
@@ -185,10 +212,10 @@ impl SudokuSolver {
         None
     }
 
-    pub fn solve_naked_single(&self, sudoku: &mut Sudoku) -> Option<Step> {
+    pub fn solve_naked_single(&self, sudoku: &Sudoku) -> Option<Step> {
         for house in self.all_constraints.iter() {
             for cell in house.iter() {
-                if sudoku.get_cell_value(cell) == UNSET {
+                if sudoku.get_cell_value(cell).is_none() {
                     continue;
                 }
                 if sudoku.get_candidates(cell).len() == 1 {
@@ -209,11 +236,11 @@ impl SudokuSolver {
         None
     }
 
-    pub fn solve_hidden_single(&self, sudoku: &mut Sudoku) -> Option<Step> {
+    pub fn solve_hidden_single(&self, sudoku: &Sudoku) -> Option<Step> {
         for house in self.all_constraints.iter() {
             for value in 1..=9 {
-                let possible_cells = sudoku.get_possible_cells(value) & house;
-                // println!("in {}, value {} can be in {}", house.name(), value, possible_cells.iter().map(|cell| sudoku.get_cell_name(cell)).join(","));
+                let possible_cells =
+                    self.get_possible_cells_for_house_and_value(sudoku, house, value);
                 if possible_cells.size() == 1 {
                     let target_cell = possible_cells.iter().next().unwrap();
                     return Some(Step::new_value_set(
@@ -234,7 +261,7 @@ impl SudokuSolver {
     }
 
     // 当 House A 中的一个数字只出现在 House A & House B （A 和 B的交集）中时，这个数字不可能再出现在 House B 中的其他单元格中
-    pub fn solve_locked_candidates(&self, sudoku: &mut Sudoku) -> Option<Step> {
+    pub fn solve_locked_candidates(&self, sudoku: &Sudoku) -> Option<Step> {
         let check = |house_a: &NamedCellSet, house_b: &NamedCellSet| -> Option<Step> {
             let intersection = house_a & house_b;
             if intersection.is_empty() {
@@ -244,7 +271,8 @@ impl SudokuSolver {
             let mut step = Step::new(StepKind::CandidateEliminated, StepRule::LockedCandidates);
 
             for value in 1..=9 {
-                let possible_cells_in_a = house_a & sudoku.get_possible_cells(value);
+                let possible_cells_in_a =
+                    self.get_possible_cells_for_house_and_value(sudoku, house_a, value);
                 if possible_cells_in_a.is_empty()
                     || !possible_cells_in_a.is_subset_of(&intersection)
                 {
@@ -301,13 +329,14 @@ impl SudokuSolver {
     }
 
     // 在一个 House 中，若任意 n 个数字只可能出现在相同 n 个（或更少）单元格中，则这 n 个单元格中不可能出现其他数字
-    pub fn solve_hidden_subset(&self, sudoku: &mut Sudoku) -> Option<Step> {
+    pub fn solve_hidden_subset(&self, sudoku: &Sudoku) -> Option<Step> {
         let mut step = Step::new(StepKind::CandidateEliminated, StepRule::HiddenSubset);
 
         for house in self.all_constraints.iter() {
             let mut possible_cells_in_houses = vec![];
             for value in 1..=9 {
-                let possible_cells_in_house = sudoku.get_possible_cells(value) & house;
+                let possible_cells_in_house =
+                    self.get_possible_cells_for_house_and_value(sudoku, house, value);
                 if !possible_cells_in_house.is_empty() {
                     possible_cells_in_houses.push((value, possible_cells_in_house));
                 }
@@ -327,7 +356,8 @@ impl SudokuSolver {
                     .iter()
                     .combinations(size)
                 {
-                    let cell_union = CellSet::union_multiple(subset.iter().map(|(_, cells)| cells));
+                    let cell_union =
+                        CellSet::union_multiple(subset.iter().map(|(_, cells)| &***cells));
                     let values_in_subset: HashSet<_> =
                         subset.iter().map(|(value, _)| *value).collect();
 
@@ -361,56 +391,49 @@ impl SudokuSolver {
     }
 
     // 当一个 House 中的 n 个单元格只包含相同的 n 个（或更少）数字时，这 n 个数字不可能出现在这个 House 中的其他单元格中
-    pub fn solve_naked_subset(&self, sudoku: &mut Sudoku) -> Option<Step> {
-        let check = |cells: &NamedCellSet, size: usize| -> Option<Step> {
-            let mut step = Step::new(StepKind::CandidateEliminated, StepRule::NakedSubset);
-
-            for subset in cells
-                .iter()
-                .filter(|&cell| sudoku.get_candidates(cell).len() >= size)
-                .combinations(size)
-            {
-                let value_union: HashSet<_> = subset
-                    .iter()
-                    .flat_map(|&cell| sudoku.get_candidates(cell).iter().copied())
-                    .collect();
-                let cells_in_subset = CellSet::from_cells(subset);
-
-                if value_union.len() > size {
-                    continue;
-                }
-
-                for cell in cells.iter() {
-                    if cells_in_subset.has(cell) {
-                        continue;
-                    }
-                    for &value in &value_union {
-                        if sudoku.can_fill(cell, value) {
-                            step.add(
-                                format!(
-                                    "in {}, {} only contains {}",
-                                    cells.name(),
-                                    cells_in_subset.to_string(sudoku),
-                                    value_union.iter().sorted().join(","),
-                                ),
-                                cell,
-                                value,
-                            );
-                        }
-                    }
-                }
-
-                if !step.is_empty() {
-                    return Some(step);
-                }
-            }
-            None
-        };
-
+    pub fn solve_naked_subset(&self, sudoku: &Sudoku) -> Option<Step> {
         for house in self.all_constraints.iter() {
             for size in 2..=4 {
-                if let Some(step) = check(house, size) {
-                    return Some(step);
+                let mut step = Step::new(StepKind::CandidateEliminated, StepRule::NakedSubset);
+    
+                for subset in house
+                    .iter()
+                    .filter(|&cell| sudoku.get_candidates(cell).len() >= size)
+                    .combinations(size)
+                {
+                    let value_union: HashSet<_> = subset
+                        .iter()
+                        .flat_map(|&cell| sudoku.get_candidates(cell).iter().copied())
+                        .collect();
+                    let cells_in_subset = CellSet::from_cells(subset);
+    
+                    if value_union.len() > size {
+                        continue;
+                    }
+    
+                    for cell in house.iter() {
+                        if cells_in_subset.has(cell) {
+                            continue;
+                        }
+                        for &value in &value_union {
+                            if sudoku.can_fill(cell, value) {
+                                step.add(
+                                    format!(
+                                        "in {}, {} only contains {}",
+                                        house.name(),
+                                        cells_in_subset.to_string(sudoku),
+                                        value_union.iter().sorted().join(","),
+                                    ),
+                                    cell,
+                                    value,
+                                );
+                            }
+                        }
+                    }
+    
+                    if !step.is_empty() {
+                        return Some(step);
+                    }
                 }
             }
         }
@@ -446,7 +469,7 @@ impl SudokuSolver {
 
         let mut step = Step::new(StepKind::CandidateEliminated, rule.clone());
         for cell in eliminated_cells.iter() {
-            let reason = if rule == StepRule::FinnedFish {
+            let reason = if fins.is_empty() {
                 format!(
                     "for {}, {} is covered by {}",
                     value,
@@ -470,32 +493,25 @@ impl SudokuSolver {
     // 鱼需要选取一个数字和两个集合：base set 和 cover set。集合中的元素都是 House，且集合内部的 House 不相互重叠。
     // 要形成鱼，base set 和 cover set 的大小需要相同。且 candidate 在 base set 中的出现位置必须被 cover set 覆盖。
     // 而基本的鱼是指 House 不包含 Block 的鱼，因此基本的鱼由 n 个 Row 和 n 个 Column 组成，且基础集所覆盖的单元格数量正好等于 n。
-    pub fn solve_fish(&self, sudoku: &mut Sudoku, rule: StepRule) -> Option<Step> {
+    pub fn solve_fish(&self, sudoku: &Sudoku, rule: StepRule) -> Option<Step> {
         for size in 2..=4 {
             for value in 1..=9 {
-                let possible_cells = sudoku.get_possible_cells(value);
                 let rows = self
                     .cells_in_rows
                     .iter()
-                    .map(|s| NamedCellSet::from_cellset(s.name().to_string(), s & possible_cells))
+                    .map(|s| self.get_possible_cells_for_house_and_value(sudoku, s, value))
                     .filter(|s| !s.is_empty() && s.size() <= size)
                     .collect_vec();
                 let cols = self
                     .cells_in_columns
                     .iter()
-                    .map(|s| NamedCellSet::from_cellset(s.name().to_string(), s & possible_cells))
-                    .filter(|s| !s.is_empty() && s.size() <= size)
-                    .collect_vec();
-                let blocks = self
-                    .cells_in_blocks
-                    .iter()
-                    .map(|s| NamedCellSet::from_cellset(s.name().to_string(), s & possible_cells))
+                    .map(|s| self.get_possible_cells_for_house_and_value(sudoku, s, value))
                     .filter(|s| !s.is_empty() && s.size() <= size)
                     .collect_vec();
 
                 if rule != StepRule::ComplexFish {
-                    for rol_set in rows.iter().combinations(size) {
-                        for col_set in cols.iter().combinations(size) {
+                    for rol_set in rows.iter().copied().combinations(size) {
+                        for col_set in cols.iter().copied().combinations(size) {
                             if let Some(step) =
                                 self.check_is_fish(sudoku, &rol_set, &col_set, value, rule.clone())
                             {
@@ -509,10 +525,19 @@ impl SudokuSolver {
                         }
                     }
                 } else {
-                    for rol_set in (0..size).flat_map(|rol_size| rows.iter().combinations(rol_size))
+                    let blocks = self
+                        .cells_in_blocks
+                        .iter()
+                        .map(|s| self.get_possible_cells_for_house_and_value(sudoku, s, value))
+                        .filter(|s| !s.is_empty() && s.size() <= size)
+                        .collect_vec();
+                    
+                    for rol_set in
+                        (0..size).flat_map(|rol_size| rows.iter().copied().combinations(rol_size))
                     {
                         for block_set in blocks
                             .iter()
+                            .copied()
                             .filter(|&b| rol_set.iter().all(|&r| (r & b).is_empty()))
                             .combinations(size - rol_set.len())
                         {
@@ -521,7 +546,7 @@ impl SudokuSolver {
                                 .chain(block_set.iter())
                                 .cloned()
                                 .collect_vec();
-                            for col_set in cols.iter().combinations(size) {
+                            for col_set in cols.iter().copied().combinations(size) {
                                 if let Some(step) = self.check_is_fish(
                                     sudoku,
                                     &rol_block_set,
@@ -543,10 +568,12 @@ impl SudokuSolver {
                             }
                         }
                     }
-                    for col_set in (0..size).flat_map(|col_size| cols.iter().combinations(col_size))
+                    for col_set in
+                        (0..size).flat_map(|col_size| cols.iter().copied().combinations(col_size))
                     {
                         for block_set in blocks
                             .iter()
+                            .copied()
                             .filter(|&b| col_set.iter().all(|&c| (c & b).is_empty()))
                             .combinations(size - col_set.len())
                         {
@@ -555,7 +582,7 @@ impl SudokuSolver {
                                 .chain(block_set.iter())
                                 .cloned()
                                 .collect_vec();
-                            for rol_set in rows.iter().combinations(size) {
+                            for rol_set in rows.iter().copied().combinations(size) {
                                 if let Some(step) = self.check_is_fish(
                                     sudoku,
                                     &rol_set,
@@ -584,19 +611,19 @@ impl SudokuSolver {
         None
     }
 
-    pub fn solve_basic_fish(&self, sudoku: &mut Sudoku) -> Option<Step> {
+    pub fn solve_basic_fish(&self, sudoku: &Sudoku) -> Option<Step> {
         self.solve_fish(sudoku, StepRule::BasicFish)
     }
 
-    pub fn solve_finned_fish(&self, sudoku: &mut Sudoku) -> Option<Step> {
+    pub fn solve_finned_fish(&self, sudoku: &Sudoku) -> Option<Step> {
         self.solve_fish(sudoku, StepRule::FinnedFish)
     }
 
-    pub fn solve_complex_fish(&self, sudoku: &mut Sudoku) -> Option<Step> {
+    pub fn solve_complex_fish(&self, sudoku: &Sudoku) -> Option<Step> {
         self.solve_fish(sudoku, StepRule::ComplexFish)
     }
 
-    pub fn solve_one_step(&self, sudoku: &mut Sudoku) -> Option<Step> {
+    pub fn solve_one_step(&self, sudoku: &Sudoku) -> Option<Step> {
         let solving_techniques = [
             SudokuSolver::solve_full_house,
             SudokuSolver::solve_naked_single,
@@ -623,7 +650,7 @@ mod tests {
     use crate::sudoku::Sudoku;
 
     fn solve_all(
-        solving_techniques: &[fn(&SudokuSolver, &mut Sudoku) -> Option<Step>],
+        solving_techniques: &[fn(&SudokuSolver, &Sudoku) -> Option<Step>],
         sudoku: &mut Sudoku,
     ) -> Vec<Step> {
         let mut solver = SudokuSolver::new(&sudoku);
@@ -636,8 +663,8 @@ mod tests {
                 let step = solve(&solver, sudoku);
                 if let Some(step) = step {
                     has_step = true;
-                    solver.apply_step(sudoku, &step);
                     println!("{}", sudoku.to_candidate_string().trim());
+                    solver.apply_step(sudoku, &step);
                     println!("{}", step.to_string(sudoku));
                     steps.push(step);
                     break;
