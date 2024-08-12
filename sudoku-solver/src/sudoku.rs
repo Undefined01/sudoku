@@ -1,15 +1,11 @@
-mod solver;
-mod utils;
-
-pub use solver::SudokuSolver;
-use utils::CellSet;
+use crate::utils::CellSet;
 
 use itertools::Itertools;
 use std::fmt::Debug;
 use wasm_bindgen::prelude::*;
 
-type CellIndex = u8;
-type CellValue = u8;
+pub type CellIndex = u8;
+pub type CellValue = u8;
 
 #[wasm_bindgen]
 pub struct Sudoku {
@@ -40,6 +36,14 @@ impl Sudoku {
         self.possible_positions[value as usize].has(idx)
     }
 
+    pub(crate) fn fill(&mut self, idx: CellIndex, value: CellValue) {
+        self.board[idx as usize] = Some(value);
+        for &candidate in self.candidates[idx as usize].iter() {
+            self.possible_positions[candidate as usize].delete(idx);
+        }
+        self.candidates[idx as usize].clear();
+    }
+
     pub(crate) fn get_possible_cells(&self, value: CellValue) -> &CellSet {
         &self.possible_positions[value as usize]
     }
@@ -56,7 +60,7 @@ impl Sudoku {
         format!("r{}c{}", idx / 9 + 1, idx % 9 + 1)
     }
 
-    pub fn from_str(str: &str) -> Self {
+    pub fn from_values(str: &str) -> Self {
         let mut board = Vec::with_capacity(81);
         for ch in str.chars() {
             if ch.is_digit(10) {
@@ -68,6 +72,34 @@ impl Sudoku {
         }
         let candidates = vec![vec![]; 81];
         let possible_positions = vec![CellSet::new(); 10];
+        Self {
+            board,
+            candidates,
+            possible_positions,
+        }
+    }
+
+    pub fn from_candidates(str: &str) -> Self {
+        let mut board = Vec::with_capacity(81);
+        let mut candidates = vec![vec![]; 81];
+        let mut possible_positions = vec![CellSet::new(); 10];
+        let mut chars = str.chars();
+        let mut idx = 0;
+        let mut waiting_next_digit = false;
+        while let Some(ch) = chars.next() {
+            if ch.is_digit(10) {
+                waiting_next_digit = true;
+                let digit = ch.to_digit(10).unwrap() as u8;
+                board.push(Some(digit));
+                candidates[idx].push(digit);
+                possible_positions[digit as usize].add(idx as u8);
+            } else {
+                if waiting_next_digit {
+                    idx += 1;
+                }
+                waiting_next_digit = false;
+            }
+        }
         Self {
             board,
             candidates,
@@ -160,7 +192,7 @@ pub struct Step {
     pub positions: Vec<StepPosition>,
 }
 
-#[wasm_bindgen(getter_with_clone)]
+#[wasm_bindgen]
 impl Step {
     pub(crate) fn new(kind: StepKind, rule: StepRule) -> Self {
         Self {
@@ -264,5 +296,6 @@ pub enum StepRule {
     NakedSubset,
     BasicFish,
     FinnedFish,
-    ComplexFish,
+    FrankenFish,
+    MutantFish,
 }

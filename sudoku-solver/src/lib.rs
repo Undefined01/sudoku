@@ -1,6 +1,9 @@
 mod sudoku;
+pub mod solver;
+mod utils;
 
-pub use sudoku::{Step, Sudoku, SudokuSolver};
+pub use sudoku::{Step, Sudoku};
+pub use solver::SudokuSolver;
 
 use wasm_bindgen::prelude::*;
 
@@ -9,18 +12,8 @@ use wasm_bindgen::prelude::*;
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
 #[wasm_bindgen]
-extern "C" {
-    fn alert(s: &str);
-}
-
-#[wasm_bindgen]
-pub fn greet() {
-    alert("Hello, sudoku-solver!");
-}
-
-#[wasm_bindgen]
 pub fn sudoku_one_step(sudoku: &str) -> Option<Step> {
-    let mut sudoku = Sudoku::from_str(sudoku);
-    let solver = SudokuSolver::new(&mut sudoku);
-    solver.solve_one_step(&mut sudoku)
+    let sudoku = Sudoku::from_values(sudoku);
+    let solver = SudokuSolver::new(sudoku);
+    solver.solve_one_step()
 }

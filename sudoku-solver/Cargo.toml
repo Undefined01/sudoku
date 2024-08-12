@@ -26,10 +26,13 @@ arrayvec = "0.7.4"
 [dev-dependencies]
 wasm-bindgen-test = "0.3.34"
 criterion = { version = "0.5.1", features = ["html_reports"]  }
+serde = "1.0.206"
+toml = "0.8.19"
 
 [profile.release]
-# Tell `rustc` to optimize for small code size.
-opt-level = "s"
+opt-level = 3
+lto = true
+codegen-units = 1
 debug = true
 
 [[bench]]

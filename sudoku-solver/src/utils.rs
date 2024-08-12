@@ -1,14 +1,15 @@
 use arrayvec::ArrayVec;
 use itertools::Itertools;
 
-use super::{CellIndex, Sudoku};
+use crate::sudoku::{CellIndex, Sudoku};
 
-use std::cell::{LazyCell, OnceCell};
+use std::cell::OnceCell;
 use std::iter::{Copied, FromIterator};
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Deref, DerefMut, Sub, SubAssign};
+use std::rc::Rc;
+use std::usize;
 
-
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct CellSet {
     bitset: u128,
     cells: OnceCell<ArrayVec<CellIndex, 81>>,
@@ -177,7 +178,7 @@ impl<'a> IntoIterator for &'a CellSet {
     }
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct NamedCellSet {
     name: String,
     idx: usize,
@@ -253,5 +254,152 @@ impl BitAnd<&CellSet> for &NamedCellSet {
 
     fn bitand(self, other: &CellSet) -> Self::Output {
         &self.cells & other
+    }
+}
+
+impl PartialEq for NamedCellSet {
+    fn eq(&self, other: &Self) -> bool {
+        self.cells == other.cells
+    }
+}
+
+pub struct CombinationCache {
+    combination_cache: Vec<Vec<Rc<Vec<Vec<CellIndex>>>>>,
+}
+
+impl CombinationCache {
+    const MAX_ARRAY_LEN: usize = 9;
+    const MAX_SIZE: usize = 4;
+
+    pub fn new() -> Self {
+        let combinations = (0..=CombinationCache::MAX_ARRAY_LEN)
+            .map(|length| {
+                (0..=length.min(CombinationCache::MAX_SIZE))
+                    .map(|size| Rc::new((0u8..(length as u8)).combinations(size).collect_vec()))
+                    .collect_vec()
+            })
+            .collect_vec();
+        CombinationCache {
+            combination_cache: combinations,
+        }
+    }
+
+    pub fn combinations<'a, T>(
+        &'a self,
+        arr: &'a [T],
+        size: usize,
+    ) -> impl Iterator<Item = ArrayVec<&T, { CombinationCache::MAX_SIZE }>> {
+        debug_assert!(arr.len() <= CombinationCache::MAX_ARRAY_LEN);
+        debug_assert!(size <= CombinationCache::MAX_SIZE);
+        if arr.len() < size {
+            return CombinationIterator {
+                combination_cache: &self.combination_cache[0][0],
+                arr,
+                idx: usize::MAX,
+            };
+        }
+        let combination_cache = &self.combination_cache[arr.len()][size];
+        CombinationIterator {
+            combination_cache,
+            arr,
+            idx: 0,
+        }
+    }
+}
+
+pub struct CombinationIterator<'a, T> {
+    combination_cache: &'a Vec<Vec<CellIndex>>,
+    arr: &'a [T],
+    idx: usize,
+}
+
+impl<'a, T> Iterator for CombinationIterator<'a, T> {
+    type Item = ArrayVec<&'a T, { CombinationCache::MAX_SIZE }>;
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let len = self.combination_cache.len() - self.idx;
+        (len, Some(len))
+    }
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.idx >= self.combination_cache.len() {
+            return None;
+        }
+        let mut combination = ArrayVec::new();
+        for idx in &self.combination_cache[self.idx] {
+            combination.push(&self.arr[*idx as usize]);
+        }
+        self.idx += 1;
+        Some(combination)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_cellset() {
+        let mut set = CellSet::new();
+        assert!(set.is_empty());
+        assert_eq!(set.size(), 0);
+
+        set.add(0);
+        assert!(!set.is_empty());
+        assert_eq!(set.size(), 1);
+
+        set.add(1);
+        assert_eq!(set.size(), 2);
+
+        set.delete(0);
+        assert_eq!(set.size(), 1);
+
+        set.clear();
+        assert!(set.is_empty());
+        assert_eq!(set.size(), 0);
+
+        set.add(0);
+        set.add(1);
+        let mut other = CellSet::new();
+        other.add(0);
+        other.add(2);
+        set -= &other;
+        assert_eq!(set.size(), 1);
+        assert!(set.has(1));
+
+        set.clear();
+        set.add(0);
+        set.add(1);
+        let mut other = CellSet::new();
+        other.add(0);
+        other.add(2);
+        let union = &set | &other;
+        assert_eq!(union.size(), 3);
+        assert!(union.has(0));
+        assert!(union.has(1));
+        assert!(union.has(2));
+
+        let intersection = &set & &other;
+        assert_eq!(intersection.size(), 1);
+        assert!(intersection.has(0));
+    }
+
+    #[test]
+    fn test_combination_generator() {
+        let cache = CombinationCache::new();
+        
+        for len in 0..=CombinationCache::MAX_ARRAY_LEN {
+            for size in 0..=CombinationCache::MAX_SIZE {
+                let arr: Vec<u8> = (0..len as u8).collect();
+                let combinations: Vec<ArrayVec<&u8, { CombinationCache::MAX_SIZE }>> =
+                    cache.combinations(&arr, size).collect();
+                let expected: Vec<Vec<&u8>> =
+                    arr.iter().combinations(size).collect();
+                assert_eq!(combinations.len(), expected.len());
+                for (combination, expected) in combinations.iter().zip(expected.iter()) {
+                    assert_eq!(combination.as_slice(), expected.as_slice());
+                }
+            }
+        }
     }
 }

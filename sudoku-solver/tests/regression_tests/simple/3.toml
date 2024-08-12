@@ -1,0 +1,46 @@
+techniques = [
+    "full_house",
+    "naked_single",
+    "hidden_single",
+    "locked_candidates",
+    "naked_subset",
+    "hidden_subset",
+    "basic_fish",
+    "finned_fish",
+    "franken_fish",
+    "mutant_fish"
+]
+
+[board]
+initial_values = "9.7..5...1..7..9..86..9.57..8...61.9316.59..72.91..65.....2..96.9...4..8...9..3.5"
+initial_candidates = """
++----------------+------------------+-----------------+
+|   9  234     7 | 23468 13468    5 | 248 123468 1234 |
+|   1 2345  2345 |     7  3468  238 |   9  23468  234 |
+|   8    6   234 |   234     9  123 |   5      7 1234 |
++----------------+------------------+-----------------+
+| 457    8    45 |   234   347    6 |   1    234    9 |
+|   3    1     6 |   248     5    9 | 248    248    7 |
+|   2   47     9 |     1  3478  378 |   6      5   34 |
++----------------+------------------+-----------------+
+| 457 3457 13458 |   358     2 1378 |  47      9    6 |
+| 567    9  1235 |   356  1367    4 |  27     12    8 |
+| 467  247  1248 |     9  1678  178 |   3    124    5 |
++----------------+------------------+-----------------+
+"""
+steps = """
+[LockedCandidates] in c6, 2 can only be in c6 & b2 => r1c4<>2
+[LockedCandidates] in c6, 2 can only be in c6 & b2 => r3c4<>2
+[LockedCandidates] in c9, 1 can only be in c9 & b3 => r1c8<>1
+[LockedCandidates] in c9, 2 can only be in c9 & b3 => r1c7<>2
+[LockedCandidates] in c9, 2 can only be in c9 & b3 => r1c8<>2
+[LockedCandidates] in c9, 2 can only be in c9 & b3 => r2c8<>2
+[LockedCandidates] in r6, 8 can only be in r6 & b5 => r5c4<>8
+[HiddenSubset] in c4, 5,6,8 only appears in r1c4,r7c4,r8c4 => r1c4<>3
+[HiddenSubset] in c4, 5,6,8 only appears in r1c4,r7c4,r8c4 => r1c4<>4
+[HiddenSubset] in c4, 5,6,8 only appears in r1c4,r7c4,r8c4 => r7c4<>3
+[HiddenSubset] in c4, 5,6,8 only appears in r1c4,r7c4,r8c4 => r8c4<>3
+[FinnedFish] for 3, c4,c8 is covered by r3,r4 with fins r1c8,r2c8 => r3c9<>3
+[FinnedFish] for 3, r3,r8 is covered by c3,c5 with fins r3c4,r3c6 => r1c5<>3
+[FinnedFish] for 3, r3,r8 is covered by c3,c5 with fins r3c4,r3c6 => r2c5<>3
+"""
