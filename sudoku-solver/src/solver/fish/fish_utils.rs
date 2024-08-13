@@ -7,8 +7,8 @@ use itertools::Itertools;
 #[inline(always)]
 pub fn check_is_fish(
     sudoku: &SudokuSolver,
-    base_set: &[&&NamedCellSet],
-    cover_set: &[&&NamedCellSet],
+    base_set: &[&NamedCellSet],
+    cover_set: &[&NamedCellSet],
     base_cells: &CellSet,
     cover_cells: &CellSet,
     value: CellValue,

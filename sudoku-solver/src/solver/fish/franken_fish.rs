@@ -1,7 +1,7 @@
 use super::fish_utils::check_is_fish;
 use crate::solver::return_if_some;
 use crate::sudoku::{CellValue, Step, StepRule};
-use crate::utils::{CellSet, NamedCellSet};
+use crate::utils::{CellSet, comb, NamedCellSet};
 use crate::SudokuSolver;
 
 use std::iter::FromIterator;
@@ -50,27 +50,26 @@ fn search_franken_fish_with(
     cols: &ArrayVec<&NamedCellSet, 9>,
     blocks: &ArrayVec<&NamedCellSet, 9>,
 ) -> Option<Step> {
-    let col_sets = sudoku
-        .combinations(&cols, size)
+    let col_sets = comb(&cols, size)
         .map(|col_set| {
-            let col_cells = CellSet::union_multiple(col_set.iter().map(|c| &****c));
+            let col_cells = CellSet::union_multiple(col_set.iter().map(|c| &***c));
             (col_set, col_cells)
         })
         .collect_vec();
 
-    for row_set in (0..size).flat_map(|row_size| sudoku.combinations(&rows, row_size)) {
-        let row_cells = CellSet::union_multiple(row_set.iter().map(|r| &****r));
+    for row_set in (0..size).flat_map(|row_size| comb(&rows, row_size)) {
+        let row_cells = CellSet::union_multiple(row_set.iter().map(|r| &***r));
         let blocks_not_in_row_set = ArrayVec::<_, 9>::from_iter(
             blocks
                 .iter()
                 .copied()
-                .filter(|&b| row_set.iter().all(|&&r| (r & b).is_empty())),
+                .filter(|&b| row_set.iter().all(|&r| (r & b).is_empty())),
         );
-        for block_set in sudoku.combinations(&blocks_not_in_row_set, size - row_set.len()) {
+        for block_set in comb(&blocks_not_in_row_set, size - row_set.len()) {
             let row_block_set =
                 ArrayVec::<_, 4>::from_iter(row_set.iter().chain(block_set.iter()).cloned());
             let row_block_cells =
-                &row_cells | &CellSet::union_multiple(block_set.iter().map(|r| &****r));
+                &row_cells | &CellSet::union_multiple(block_set.iter().map(|r| &***r));
             for (col_set, col_cells) in &col_sets {
                 return_if_some!(check_is_fish(
                     sudoku,

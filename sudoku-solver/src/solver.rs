@@ -1,6 +1,6 @@
 pub mod fish;
 use crate::sudoku::{CellIndex, CellValue, Step, StepKind, StepRule, Sudoku};
-use crate::utils::{CellSet, CombinationCache, NamedCellSet};
+use crate::utils::{CellSet, NamedCellSet};
 
 use std::cell::OnceCell;
 use std::collections::HashSet;
@@ -23,7 +23,6 @@ pub struct SudokuSolver {
     pub(crate) cells_in_blocks: Vec<NamedCellSet>,
 
     pub(crate) possible_positions_for_house_and_value: Vec<OnceCell<NamedCellSet>>,
-    pub(crate) combination_generator: CombinationCache,
 }
 
 macro_rules! return_if_some {
@@ -90,16 +89,8 @@ impl SudokuSolver {
         debug_assert!(value >= 1 && value <= 9);
         let idx = house.idx() * 9 + value as usize - 1;
         self.possible_positions_for_house_and_value[idx].get_or_init(|| {
-            NamedCellSet::from_cellset(house.name().to_string(), self.possible_cells(value) & house)
+            NamedCellSet::from_cellset(house, self.possible_cells(value) & house)
         })
-    }
-
-    pub(crate) fn combinations<'a>(
-        &'a self,
-        arr: &'a [&NamedCellSet],
-        size: usize,
-    ) -> impl Iterator<Item = ArrayVec<&&NamedCellSet, 4>> {
-        self.combination_generator.combinations(arr, size)
     }
 
     pub(crate) fn get_cell_name(&self, idx: CellIndex) -> String {
@@ -183,7 +174,6 @@ impl SudokuSolver {
             cells_in_columns,
             cells_in_blocks,
             possible_positions_for_house_and_value,
-            combination_generator: CombinationCache::new(),
         }
     }
 
@@ -295,9 +285,6 @@ impl SudokuSolver {
     pub fn solve_naked_single(&self) -> Option<Step> {
         for house in self.all_constraints.iter() {
             for cell in house.iter() {
-                if self.cell_value(cell).is_none() {
-                    continue;
-                }
                 if self.candidates(cell).len() == 1 {
                     let &value = self.candidates(cell).iter().next().unwrap();
                     return Some(Step::new_value_set(
@@ -493,7 +480,7 @@ impl SudokuSolver {
                         if cells_in_subset.has(cell) {
                             continue;
                         }
-                        for &value in &value_union {
+                        for &value in value_union.iter().sorted() {
                             if self.can_fill(cell, value) {
                                 step.add(
                                     format!(

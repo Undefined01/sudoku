@@ -1,6 +1,6 @@
 mod sudoku;
 pub mod solver;
-mod utils;
+pub mod utils;
 
 pub use sudoku::{Step, Sudoku};
 pub use solver::SudokuSolver;

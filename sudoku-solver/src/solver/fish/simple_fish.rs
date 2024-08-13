@@ -1,5 +1,5 @@
 use crate::sudoku::{CellValue, Step, StepRule};
-use crate::utils::{CellSet, NamedCellSet};
+use crate::utils::{CellSet, comb, NamedCellSet};
 use crate::SudokuSolver;
 use crate::solver::return_if_some;
 use super::fish_utils::check_is_fish;
@@ -19,39 +19,33 @@ pub fn search_simple_fish(
     debug_assert!(size >= 2 && size <= 4);
     debug_assert!(value >= 1 && value <= 9);
     debug_assert!(rule == StepRule::BasicFish || rule == StepRule::FinnedFish);
-
-    let cellset_size_limit = if rule == StepRule::BasicFish { size } else { usize::MAX };
     
     let rows_in_size = ArrayVec::<_, 9>::from_iter(
         sudoku
             .cells_in_rows()
             .iter()
             .map(|s| sudoku.get_possible_cells_for_house_and_value(s, value))
-            .filter(|s| s.size() > 1 && s.size() <= cellset_size_limit),
+            .filter(|s| s.size() > 1),
     );
     let cols_in_size = ArrayVec::<_, 9>::from_iter(
         sudoku
             .cells_in_columns()
             .iter()
             .map(|s| sudoku.get_possible_cells_for_house_and_value(s, value))
-            .filter(|s| s.size() > 1 && s.size() <= cellset_size_limit),
+            .filter(|s| s.size() > 1),
     );
 
-    let row_sets = sudoku
-        .combinations(&rows_in_size, size)
+    let row_sets = comb(&rows_in_size, size)
         .map(|row_set| {
-            let row_cells = CellSet::union_multiple(row_set.iter().map(|r| &****r));
+            let row_cells = CellSet::union_multiple(row_set.iter().map(|r| &***r));
             (row_set, row_cells)
         })
-        .filter(|(_, row_cells)| row_cells.size() <= cellset_size_limit)
         .collect_vec();
-    let col_sets = sudoku
-        .combinations(&cols_in_size, size)
+    let col_sets = comb(&cols_in_size, size)
         .map(|col_set| {
-            let col_cells = CellSet::union_multiple(col_set.iter().map(|c| &****c));
+            let col_cells = CellSet::union_multiple(col_set.iter().map(|c| &***c));
             (col_set, col_cells)
         })
-        .filter(|(_, col_cells)| col_cells.size() <= cellset_size_limit)
         .collect_vec();
 
     for (row_set, row_cells) in &row_sets {

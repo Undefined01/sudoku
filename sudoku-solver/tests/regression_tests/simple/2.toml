@@ -36,62 +36,61 @@ solution = """
 521348769
 """
 steps = """
-[HiddenSingle] in b2, r2c6 is the only possible cell that can be 2 => r2c6=2
-[HiddenSingle] in b2, r2c4 is the only possible cell that can be 6 => r2c4=6
-[HiddenSingle] in b2, r2c5 is the only possible cell that can be 5 => r2c5=5
-[FullHouse] r1c4 is the only missing cell in b2 => r1c4=1
+[NakedSingle] 1 is the only possible value to fill r1c4 => r1c4=1
+[NakedSingle] 5 is the only possible value to fill r2c5 => r2c5=5
+[NakedSingle] 6 is the only possible value to fill r2c4 => r2c4=6
+[FullHouse] r2c6 is the only missing cell in b2 => r2c6=2
+[NakedSingle] 9 is the only possible value to fill r2c2 => r2c2=9
+[NakedSingle] 4 is the only possible value to fill r3c8 => r3c8=4
+[NakedSingle] 8 is the only possible value to fill r5c2 => r5c2=8
+[NakedSingle] 6 is the only possible value to fill r6c2 => r6c2=6
+[FullHouse] r9c2 is the only missing cell in c2 => r9c2=2
+[NakedSingle] 3 is the only possible value to fill r4c6 => r4c6=3
+[NakedSingle] 1 is the only possible value to fill r5c6 => r5c6=1
+[NakedSingle] 5 is the only possible value to fill r6c6 => r6c6=5
+[FullHouse] r8c6 is the only missing cell in c6 => r8c6=6
 [HiddenSingle] in b4, r4c1 is the only possible cell that can be 2 => r4c1=2
-[HiddenSingle] in b8, r9c4 is the only possible cell that can be 3 => r9c4=3
-[HiddenSingle] in b8, r8c6 is the only possible cell that can be 6 => r8c6=6
-[HiddenSingle] in b9, r9c8 is the only possible cell that can be 6 => r9c8=6
-[HiddenSingle] in c2, r9c2 is the only possible cell that can be 2 => r9c2=2
-[HiddenSingle] in c2, r6c2 is the only possible cell that can be 6 => r6c2=6
-[HiddenSingle] in c2, r5c2 is the only possible cell that can be 8 => r5c2=8
-[FullHouse] r2c2 is the only missing cell in c2 => r2c2=9
-[HiddenSingle] in r6, r6c5 is the only possible cell that can be 8 => r6c5=8
-[HiddenSingle] in c6, r6c6 is the only possible cell that can be 5 => r6c6=5
-[HiddenSingle] in b5, r5c6 is the only possible cell that can be 1 => r5c6=1
-[FullHouse] r4c6 is the only missing cell in c6 => r4c6=3
 [HiddenSingle] in b6, r6c9 is the only possible cell that can be 1 => r6c9=1
 [HiddenSingle] in b6, r5c7 is the only possible cell that can be 3 => r5c7=3
+[NakedSingle] 1 is the only possible value to fill r2c7 => r2c7=1
 [HiddenSingle] in b3, r2c8 is the only possible cell that can be 3 => r2c8=3
 [HiddenSingle] in b4, r6c1 is the only possible cell that can be 3 => r6c1=3
+[HiddenSingle] in b8, r9c4 is the only possible cell that can be 3 => r9c4=3
+[HiddenSingle] in b9, r9c8 is the only possible cell that can be 6 => r9c8=6
+[HiddenSingle] in r6, r6c5 is the only possible cell that can be 8 => r6c5=8
 [LockedCandidates] in r2, 7 can only be in r2 & b1 => r1c1<>7
 [LockedCandidates] in r2, 7 can only be in r2 & b1 => r1c3<>7
-[HiddenSubset] in b1, 1,4,6,7 only appears in r2c1,r2c3,r3c1,r3c3 => r3c3<>2
-[HiddenSingle] in b1, r1c3 is the only possible cell that can be 2 => r1c3=2
-[HiddenSingle] in b1, r1c1 is the only possible cell that can be 8 => r1c1=8
+[NakedSingle] 8 is the only possible value to fill r1c1 => r1c1=8
+[NakedSingle] 2 is the only possible value to fill r1c3 => r1c3=2
 [HiddenSingle] in b7, r7c3 is the only possible cell that can be 8 => r7c3=8
-[HiddenSingle] in b7, r7c1 is the only possible cell that can be 6 => r7c1=6
-[HiddenSingle] in b1, r3c3 is the only possible cell that can be 6 => r3c3=6
-[HiddenSingle] in r7, r7c4 is the only possible cell that can be 9 => r7c4=9
-[FullHouse] r7c7 is the only missing cell in r7 => r7c7=5
-[HiddenSingle] in b3, r3c9 is the only possible cell that can be 5 => r3c9=5
-[HiddenSingle] in b3, r3c7 is the only possible cell that can be 2 => r3c7=2
-[HiddenSingle] in b3, r2c7 is the only possible cell that can be 1 => r2c7=1
-[HiddenSingle] in b1, r3c1 is the only possible cell that can be 1 => r3c1=1
-[FullHouse] r3c8 is the only missing cell in r3 => r3c8=4
+[NakedSingle] 5 is the only possible value to fill r7c7 => r7c7=5
+[NakedSingle] 2 is the only possible value to fill r3c7 => r3c7=2
+[NakedSingle] 5 is the only possible value to fill r3c9 => r3c9=5
+[NakedSingle] 9 is the only possible value to fill r7c4 => r7c4=9
+[FullHouse] r7c1 is the only missing cell in r7 => r7c1=6
+[NakedSingle] 1 is the only possible value to fill r3c1 => r3c1=1
+[FullHouse] r3c3 is the only missing cell in r3 => r3c3=6
 [HiddenSingle] in b5, r4c5 is the only possible cell that can be 9 => r4c5=9
 [HiddenSingle] in b7, r9c3 is the only possible cell that can be 1 => r9c3=1
-[HiddenSingle] in b8, r8c5 is the only possible cell that can be 1 => r8c5=1
-[FullHouse] r9c5 is the only missing cell in c5 => r9c5=4
+[NakedSingle] 4 is the only possible value to fill r9c5 => r9c5=4
+[FullHouse] r8c5 is the only missing cell in c5 => r8c5=1
 [FullHouse] r8c4 is the only missing cell in b8 => r8c4=5
-[HiddenSingle] in b7, r9c1 is the only possible cell that can be 5 => r9c1=5
-[FullHouse] r8c1 is the only missing cell in b7 => r8c1=9
+[NakedSingle] 9 is the only possible value to fill r8c1 => r8c1=9
+[FullHouse] r9c1 is the only missing cell in b7 => r9c1=5
 [FullHouse] r9c9 is the only missing cell in r9 => r9c9=9
-[HiddenSingle] in b3, r1c8 is the only possible cell that can be 9 => r1c8=9
-[FullHouse] r1c9 is the only missing cell in b3 => r1c9=7
-[HiddenSingle] in b4, r5c3 is the only possible cell that can be 9 => r5c3=9
-[HiddenSingle] in b6, r4c8 is the only possible cell that can be 7 => r4c8=7
-[FullHouse] r8c8 is the only missing cell in c8 => r8c8=8
-[HiddenSingle] in b5, r6c4 is the only possible cell that can be 7 => r6c4=7
-[FullHouse] r4c4 is the only missing cell in b5 => r4c4=4
-[FullHouse] r4c7 is the only missing cell in r4 => r4c7=8
-[FullHouse] r5c9 is the only missing cell in b6 => r5c9=4
-[FullHouse] r5c1 is the only missing cell in r5 => r5c1=7
+[NakedSingle] 7 is the only possible value to fill r1c9 => r1c9=7
+[FullHouse] r1c8 is the only missing cell in b3 => r1c8=9
+[NakedSingle] 4 is the only possible value to fill r5c9 => r5c9=4
+[FullHouse] r8c9 is the only missing cell in c9 => r8c9=2
+[NakedSingle] 7 is the only possible value to fill r5c1 => r5c1=7
+[FullHouse] r5c3 is the only missing cell in r5 => r5c3=9
 [FullHouse] r6c3 is the only missing cell in b4 => r6c3=4
+[FullHouse] r6c4 is the only missing cell in r6 => r6c4=7
+[FullHouse] r4c4 is the only missing cell in b5 => r4c4=4
 [FullHouse] r2c1 is the only missing cell in c1 => r2c1=4
 [FullHouse] r2c3 is the only missing cell in b1 => r2c3=7
+[NakedSingle] 8 is the only possible value to fill r4c7 => r4c7=8
+[FullHouse] r4c8 is the only missing cell in b6 => r4c8=7
 [FullHouse] r8c7 is the only missing cell in c7 => r8c7=4
-[FullHouse] r8c9 is the only missing cell in b9 => r8c9=2
+[FullHouse] r8c8 is the only missing cell in b9 => r8c8=8
 """

@@ -3,10 +3,11 @@ use itertools::Itertools;
 
 use crate::sudoku::{CellIndex, Sudoku};
 
-use std::cell::OnceCell;
+use std::cell::{Cell, OnceCell};
 use std::iter::{Copied, FromIterator};
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Deref, DerefMut, Sub, SubAssign};
 use std::rc::Rc;
+use std::sync::LazyLock;
 use std::usize;
 
 #[derive(Debug, Clone)]
@@ -94,7 +95,7 @@ impl CellSet {
                 let mut cells = ArrayVec::new();
                 if !self.is_empty() {
                     for idx in (0..81).step_by(9) {
-                        let bits = ((self.bitset >> idx) & 0x1FF) as u32;
+                        let bits = ((self.bitset >> idx) & 0x1FF) as usize;
                         if bits == 0 {
                             continue;
                         }
@@ -194,11 +195,11 @@ impl NamedCellSet {
         }
     }
 
-    pub fn from_cellset(name: String, cells: CellSet) -> Self {
+    pub fn from_cellset(source: &NamedCellSet, cells: CellSet) -> Self {
         NamedCellSet {
-            name,
+            name: source.name().to_string(),
             cells,
-            idx: 100,
+            idx: source.idx(),
         }
     }
 
@@ -263,77 +264,6 @@ impl PartialEq for NamedCellSet {
     }
 }
 
-pub struct CombinationCache {
-    combination_cache: Vec<Vec<Rc<Vec<Vec<CellIndex>>>>>,
-}
-
-impl CombinationCache {
-    const MAX_ARRAY_LEN: usize = 9;
-    const MAX_SIZE: usize = 4;
-
-    pub fn new() -> Self {
-        let combinations = (0..=CombinationCache::MAX_ARRAY_LEN)
-            .map(|length| {
-                (0..=length.min(CombinationCache::MAX_SIZE))
-                    .map(|size| Rc::new((0u8..(length as u8)).combinations(size).collect_vec()))
-                    .collect_vec()
-            })
-            .collect_vec();
-        CombinationCache {
-            combination_cache: combinations,
-        }
-    }
-
-    pub fn combinations<'a, T>(
-        &'a self,
-        arr: &'a [T],
-        size: usize,
-    ) -> impl Iterator<Item = ArrayVec<&T, { CombinationCache::MAX_SIZE }>> {
-        debug_assert!(arr.len() <= CombinationCache::MAX_ARRAY_LEN);
-        debug_assert!(size <= CombinationCache::MAX_SIZE);
-        if arr.len() < size {
-            return CombinationIterator {
-                combination_cache: &self.combination_cache[0][0],
-                arr,
-                idx: usize::MAX,
-            };
-        }
-        let combination_cache = &self.combination_cache[arr.len()][size];
-        CombinationIterator {
-            combination_cache,
-            arr,
-            idx: 0,
-        }
-    }
-}
-
-pub struct CombinationIterator<'a, T> {
-    combination_cache: &'a Vec<Vec<CellIndex>>,
-    arr: &'a [T],
-    idx: usize,
-}
-
-impl<'a, T> Iterator for CombinationIterator<'a, T> {
-    type Item = ArrayVec<&'a T, { CombinationCache::MAX_SIZE }>;
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        let len = self.combination_cache.len() - self.idx;
-        (len, Some(len))
-    }
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.idx >= self.combination_cache.len() {
-            return None;
-        }
-        let mut combination = ArrayVec::new();
-        for idx in &self.combination_cache[self.idx] {
-            combination.push(&self.arr[*idx as usize]);
-        }
-        self.idx += 1;
-        Some(combination)
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -382,24 +312,5 @@ mod tests {
         let intersection = &set & &other;
         assert_eq!(intersection.size(), 1);
         assert!(intersection.has(0));
-    }
-
-    #[test]
-    fn test_combination_generator() {
-        let cache = CombinationCache::new();
-        
-        for len in 0..=CombinationCache::MAX_ARRAY_LEN {
-            for size in 0..=CombinationCache::MAX_SIZE {
-                let arr: Vec<u8> = (0..len as u8).collect();
-                let combinations: Vec<ArrayVec<&u8, { CombinationCache::MAX_SIZE }>> =
-                    cache.combinations(&arr, size).collect();
-                let expected: Vec<Vec<&u8>> =
-                    arr.iter().combinations(size).collect();
-                assert_eq!(combinations.len(), expected.len());
-                for (combination, expected) in combinations.iter().zip(expected.iter()) {
-                    assert_eq!(combination.as_slice(), expected.as_slice());
-                }
-            }
-        }
     }
 }

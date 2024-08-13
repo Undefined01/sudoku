@@ -2,7 +2,46 @@ use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
 use sudoku_solver::{Sudoku, SudokuSolver};
 
-pub fn criterion_benchmark(c: &mut Criterion) {
+pub fn combination_benchmark(c: &mut Criterion) {
+    let mut group = c.benchmark_group("combinations");
+
+    group.bench_function("itertools", |b| {
+        let n = black_box(9);
+        let k = black_box(4);
+        let arr = (0..n).collect::<Vec<_>>();
+        b.iter(|| {
+            use itertools::Itertools;
+            for result in arr.iter().copied().combinations(k) {
+                black_box(result);
+            }
+        })
+    });
+
+    group.bench_function("utils", |b| {
+        let n = black_box(9);
+        let k = black_box(4);
+        let arr = (0..n).collect::<Vec<_>>();
+        b.iter(|| {
+            let config = sudoku_solver::utils::CombinationOptions::default();
+            for result in sudoku_solver::utils::combinations(&arr, k, config) {
+                black_box(result);
+            }
+        })
+    });
+
+    group.bench_function("utils::cached", |b| {
+        let n = black_box(9);
+        let k = black_box(4);
+        let arr = (0..n).collect::<Vec<_>>();
+        b.iter(|| {
+            for result in sudoku_solver::utils::comb(&arr, k) {
+                black_box(result);
+            }
+        })
+    });
+}
+
+pub fn solver_benchmark(c: &mut Criterion) {
     c.bench_function("sudoku hard", |b| {
         b.iter(|| {
             let sudoku = Sudoku::from_values(black_box(
@@ -17,5 +56,5 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     });
 }
 
-criterion_group!(benches, criterion_benchmark);
+criterion_group!(benches, combination_benchmark, solver_benchmark);
 criterion_main!(benches);

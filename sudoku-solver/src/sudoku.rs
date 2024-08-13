@@ -186,6 +186,7 @@ impl Sudoku {
 }
 
 #[wasm_bindgen(getter_with_clone)]
+#[derive(Clone)]
 pub struct Step {
     pub kind: StepKind,
     pub rule: StepRule,
