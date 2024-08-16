@@ -223,6 +223,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d231dfb89cfffdbc30e7fc41579ed6066ad03abda9e567ccafae602b97ec5024"
 
 [[package]]
+name = "hudoku"
+version = "0.0.1"
+dependencies = [
+ "arrayvec",
+ "console_error_panic_hook",
+ "criterion",
+ "itertools 0.13.0",
+ "serde",
+ "toml",
+ "wasm-bindgen",
+ "wasm-bindgen-test",
+ "wee_alloc",
+]
+
+[[package]]
 name = "indexmap"
 version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -476,21 +491,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "eb5b1b31579f3811bf615c144393417496f152e12ac8b7663bf664f4a815306d"
 dependencies = [
  "serde",
-]
-
-[[package]]
-name = "sudoku-solver"
-version = "0.1.0"
-dependencies = [
- "arrayvec",
- "console_error_panic_hook",
- "criterion",
- "itertools 0.13.0",
- "serde",
- "toml",
- "wasm-bindgen",
- "wasm-bindgen-test",
- "wee_alloc",
 ]
 
 [[package]]

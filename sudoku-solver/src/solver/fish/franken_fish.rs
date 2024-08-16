@@ -1,7 +1,7 @@
 use super::fish_utils::check_is_fish;
 use crate::solver::return_if_some;
 use crate::sudoku::{CellValue, Step, StepRule};
-use crate::utils::{CellSet, comb, NamedCellSet};
+use crate::utils::{comb, CellSet, NamedCellSet};
 use crate::SudokuSolver;
 
 use std::iter::FromIterator;

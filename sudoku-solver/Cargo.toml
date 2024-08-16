@@ -1,10 +1,15 @@
 [package]
-name = "sudoku-solver"
-version = "0.1.0"
+name = "hudoku"
+version = "0.0.1"
 authors = ["Undefined01 <amoscr@163.com>"]
-edition = "2018"
+edition = "2021"
+description = "A human style sudoku solver"
+license = "MIT"
+
+exclude = ["/tests", "/benches"]
 
 [lib]
+name = "sudoku_solver"
 crate-type = ["cdylib", "rlib"]
 
 [features]

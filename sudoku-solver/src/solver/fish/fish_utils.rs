@@ -20,7 +20,7 @@ pub fn check_is_fish(
         return None;
     }
 
-    let allow_fins = rule == StepRule::FinnedFish || rule == StepRule::MutantFish;
+    let allow_fins = rule != StepRule::BasicFish;
     if !allow_fins && !fins.is_empty() {
         return None;
     }

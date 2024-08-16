@@ -1,9 +1,9 @@
-mod sudoku;
 pub mod solver;
+mod sudoku;
 pub mod utils;
 
-pub use sudoku::{Step, Sudoku};
 pub use solver::SudokuSolver;
+pub use sudoku::{Step, Sudoku};
 
 use wasm_bindgen::prelude::*;
 

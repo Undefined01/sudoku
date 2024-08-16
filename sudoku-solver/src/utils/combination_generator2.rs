@@ -1,10 +1,3 @@
-use crate::sudoku::{CellValue, Step, StepRule};
-use crate::utils::{CellSet, NamedCellSet};
-use crate::SudokuSolver;
-
-use std::cell::{LazyCell, OnceCell};
-use std::iter::FromIterator;
-use std::rc::Rc;
 use std::sync::{Arc, LazyLock};
 
 use arrayvec::ArrayVec;
@@ -23,10 +16,7 @@ static CACHE: LazyLock<Vec<Vec<Arc<Vec<Vec<usize>>>>>> = LazyLock::new(|| {
         .collect_vec()
 });
 
-pub fn combinations<'a, T: Copy>(
-    arr: &'a [T],
-    size: usize,
-) -> CombinationIterator<'a, T> {
+pub fn combinations<'a, T: Copy>(arr: &'a [T], size: usize) -> CombinationIterator<'a, T> {
     debug_assert!(arr.len() <= MAX_ARRAY_LEN);
     debug_assert!(size <= MAX_SIZE);
 

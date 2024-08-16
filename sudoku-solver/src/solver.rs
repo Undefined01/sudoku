@@ -1,28 +1,33 @@
 pub mod fish;
+pub mod single_digit_patterns;
 use crate::sudoku::{CellIndex, CellValue, Step, StepKind, StepRule, Sudoku};
 use crate::utils::{CellSet, NamedCellSet};
 
 use std::cell::OnceCell;
 use std::collections::HashSet;
-use std::iter::FromIterator;
 
-use arrayvec::ArrayVec;
 use itertools::Itertools;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
 pub struct SudokuSolver {
-    pub(crate) sudoku: Sudoku,
+    sudoku: Sudoku,
 
-    pub(crate) all_constraints: Vec<NamedCellSet>,
-    pub(crate) constraints_of_cell: Vec<Vec<NamedCellSet>>,
-    pub(crate) house_union_of_cell: Vec<CellSet>,
+    all_constraints: Vec<NamedCellSet>,
+    constraints_of_cell: Vec<Vec<NamedCellSet>>,
+    house_union_of_cell: Vec<CellSet>,
+    block_id_of_cell: Vec<usize>,
+    row_id_of_cell: Vec<usize>,
+    column_id_of_cell: Vec<usize>,
 
-    pub(crate) cells_in_rows: Vec<NamedCellSet>,
-    pub(crate) cells_in_columns: Vec<NamedCellSet>,
-    pub(crate) cells_in_blocks: Vec<NamedCellSet>,
+    cells_in_rows: Vec<NamedCellSet>,
+    cells_in_columns: Vec<NamedCellSet>,
+    cells_in_blocks: Vec<NamedCellSet>,
+    candidate_cells_in_rows: OnceCell<Vec<Vec<NamedCellSet>>>,
+    candidate_cells_in_columns: OnceCell<Vec<Vec<NamedCellSet>>>,
+    candidate_cells_in_blocks: OnceCell<Vec<Vec<NamedCellSet>>>,
 
-    pub(crate) possible_positions_for_house_and_value: Vec<OnceCell<NamedCellSet>>,
+    possible_positions_for_house_and_value: Vec<OnceCell<NamedCellSet>>,
 }
 
 macro_rules! return_if_some {
@@ -38,6 +43,10 @@ pub(crate) use return_if_some;
 impl SudokuSolver {
     pub fn sudoku(&self) -> &Sudoku {
         &self.sudoku
+    }
+
+    pub(crate) fn cell_index(&self, row: usize, col: usize) -> CellIndex {
+        self.sudoku.get_cell_position(row, col)
     }
 
     pub(crate) fn cell_value(&self, idx: CellIndex) -> Option<CellValue> {
@@ -68,6 +77,37 @@ impl SudokuSolver {
         &self.house_union_of_cell[idx as usize]
     }
 
+    pub(crate) fn block_id_of_cell(&self, idx: CellIndex) -> usize {
+        self.block_id_of_cell[idx as usize]
+    }
+
+    pub(crate) fn cell_of_intersection(
+        &self,
+        house_1: &NamedCellSet,
+        house_2: &NamedCellSet,
+    ) -> CellIndex {
+        let (row_idx, col_idx) = if house_1.idx() < 18 {
+            debug_assert!(house_1.idx() >= 9);
+            debug_assert!(house_2.idx() >= 18);
+            debug_assert!(house_2.idx() < 27);
+            (house_1.idx() - 9, house_2.idx() - 18)
+        } else {
+            debug_assert!(house_2.idx() >= 9);
+            debug_assert!(house_1.idx() >= 18);
+            debug_assert!(house_1.idx() < 27);
+            (house_2.idx() - 9, house_1.idx() - 18)
+        };
+        return (row_idx * 9 + col_idx) as CellIndex;
+    }
+
+    pub(crate) fn row_id_of_cell(&self, idx: CellIndex) -> usize {
+        self.row_id_of_cell[idx as usize]
+    }
+
+    pub(crate) fn column_id_of_cell(&self, idx: CellIndex) -> usize {
+        self.column_id_of_cell[idx as usize]
+    }
+
     pub(crate) fn cells_in_rows(&self) -> &[NamedCellSet] {
         &self.cells_in_rows
     }
@@ -80,6 +120,51 @@ impl SudokuSolver {
         &self.cells_in_blocks
     }
 
+    pub(crate) fn candidate_cells_in_rows(&self, value: CellValue) -> &[NamedCellSet] {
+        &self.candidate_cells_in_rows.get_or_init(|| {
+            (1..=9)
+                .map(|value| {
+                    self.cells_in_rows
+                        .iter()
+                        .map(|row| {
+                            NamedCellSet::from_cellset(row, self.possible_cells(value) & row)
+                        })
+                        .collect()
+                })
+                .collect()
+        })[value as usize - 1]
+    }
+
+    pub(crate) fn candidate_cells_in_columns(&self, value: CellValue) -> &[NamedCellSet] {
+        &self.candidate_cells_in_columns.get_or_init(|| {
+            (1..=9)
+                .map(|value| {
+                    self.cells_in_columns
+                        .iter()
+                        .map(|col| {
+                            NamedCellSet::from_cellset(col, self.possible_cells(value) & col)
+                        })
+                        .collect()
+                })
+                .collect()
+        })[value as usize - 1]
+    }
+
+    pub(crate) fn candidate_cells_in_blocks(&self, value: CellValue) -> &[NamedCellSet] {
+        &self.candidate_cells_in_blocks.get_or_init(|| {
+            (1..=9)
+                .map(|value| {
+                    self.cells_in_blocks
+                        .iter()
+                        .map(|block| {
+                            NamedCellSet::from_cellset(block, self.possible_cells(value) & block)
+                        })
+                        .collect()
+                })
+                .collect()
+        })[value as usize - 1]
+    }
+
     pub(crate) fn get_possible_cells_for_house_and_value(
         &self,
         house: &NamedCellSet,
@@ -88,9 +173,8 @@ impl SudokuSolver {
         debug_assert!(house.idx() < 27);
         debug_assert!(value >= 1 && value <= 9);
         let idx = house.idx() * 9 + value as usize - 1;
-        self.possible_positions_for_house_and_value[idx].get_or_init(|| {
-            NamedCellSet::from_cellset(house, self.possible_cells(value) & house)
-        })
+        self.possible_positions_for_house_and_value[idx]
+            .get_or_init(|| NamedCellSet::from_cellset(house, self.possible_cells(value) & house))
     }
 
     pub(crate) fn get_cell_name(&self, idx: CellIndex) -> String {
@@ -108,6 +192,9 @@ impl SudokuSolver {
         let mut all_constraints = vec![];
         let mut constraints_of_cell = (0..81).map(|_| vec![]).collect::<Vec<_>>();
         let mut house_union_of_cell = (0..81).map(|_| CellSet::new()).collect::<Vec<_>>();
+        let mut block_id_of_cell = vec![0; 81];
+        let mut row_id_of_cell = vec![0; 81];
+        let mut column_id_of_cell = vec![0; 81];
         let mut cells_in_rows = vec![];
         let mut cells_in_columns = vec![];
         let mut cells_in_blocks = vec![];
@@ -123,6 +210,7 @@ impl SudokuSolver {
                     for y in 0..3 {
                         let pos = sudoku.get_cell_position(block_x + x, block_y + y);
                         block_set.add(pos);
+                        block_id_of_cell[pos as usize] = block_x + block_y / 3;
                     }
                 }
                 all_constraints.push(block_set.clone());
@@ -135,6 +223,7 @@ impl SudokuSolver {
             for col in 0..9 {
                 let pos = sudoku.get_cell_position(row, col);
                 row_set.add(pos);
+                row_id_of_cell[pos as usize] = row;
             }
             all_constraints.push(row_set.clone());
             cells_in_rows.push(row_set);
@@ -145,6 +234,7 @@ impl SudokuSolver {
             for row in 0..9 {
                 let pos = sudoku.get_cell_position(row, col);
                 col_set.add(pos);
+                column_id_of_cell[pos as usize] = col;
             }
             all_constraints.push(col_set.clone());
             cells_in_columns.push(col_set);
@@ -170,9 +260,17 @@ impl SudokuSolver {
             all_constraints,
             constraints_of_cell,
             house_union_of_cell,
+            block_id_of_cell,
+            row_id_of_cell,
+            column_id_of_cell,
+
             cells_in_rows,
             cells_in_columns,
             cells_in_blocks,
+            candidate_cells_in_rows: OnceCell::new(),
+            candidate_cells_in_columns: OnceCell::new(),
+            candidate_cells_in_blocks: OnceCell::new(),
+
             possible_positions_for_house_and_value,
         }
     }
@@ -219,6 +317,9 @@ impl SudokuSolver {
 
     pub fn apply_step(&mut self, step: &Step) {
         self.possible_positions_for_house_and_value = vec![OnceCell::new(); 27 * 9];
+        self.candidate_cells_in_rows.take();
+        self.candidate_cells_in_columns.take();
+        self.candidate_cells_in_blocks.take();
         match step.kind {
             StepKind::ValueSet => {
                 for position in step.positions.iter() {
@@ -463,7 +564,9 @@ impl SudokuSolver {
 
                 for subset in house
                     .iter()
-                    .filter(|&cell| !self.candidates(cell).is_empty() && self.candidates(cell).len() <= size)
+                    .filter(|&cell| {
+                        !self.candidates(cell).is_empty() && self.candidates(cell).len() <= size
+                    })
                     .combinations(size)
                 {
                     let value_union: HashSet<_> = subset
@@ -507,7 +610,7 @@ impl SudokuSolver {
 
     pub fn solve_one_step(&self) -> Option<Step> {
         let solving_techniques = [
-            SudokuSolver::solve_full_house,
+            // SudokuSolver::solve_full_house,
             SudokuSolver::solve_naked_single,
             SudokuSolver::solve_hidden_single,
             SudokuSolver::solve_locked_candidates,
@@ -516,7 +619,7 @@ impl SudokuSolver {
             fish::solve_basic_fish,
             fish::solve_finned_fish,
             fish::solve_franken_fish,
-            fish::solve_mutant_fish,
+            // fish::solve_mutant_fish,
         ];
         for technique in solving_techniques.iter() {
             if let Some(step) = technique(self) {

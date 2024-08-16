@@ -80,6 +80,13 @@ fn load_techinques(
             "finned_fish" => technique_fns.push(solver::fish::solve_finned_fish),
             "franken_fish" => technique_fns.push(solver::fish::solve_franken_fish),
             "mutant_fish" => technique_fns.push(solver::fish::solve_mutant_fish),
+            "two_string_kite" => {
+                technique_fns.push(solver::single_digit_patterns::solve_two_string_kite)
+            }
+            "skyscraper" => technique_fns.push(solver::single_digit_patterns::solve_skyscraper),
+            "rectangle_elimination" => {
+                technique_fns.push(solver::single_digit_patterns::solve_rectangle_elimination)
+            }
             _ => panic!("Unknown technique: {}", technique),
         }
     }
@@ -244,16 +251,32 @@ fn regression_test() {
     for group in groups {
         let group = group.unwrap();
         let group_path = group.path();
-        if group_path.is_dir() {
-            let tests = std::fs::read_dir(group_path).unwrap();
-            for test_path in tests {
-                if let Ok(test_path) = test_path {
-                    let test_config: RegressionTest =
-                        toml::from_str(std::fs::read_to_string(test_path.path()).unwrap().as_str())
-                            .unwrap();
-                    println!("Testing {}", test_path.path().to_str().unwrap());
-                    run_testcase(test_config);
+        if !group_path.is_dir()
+            || group_path
+                .file_name()
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .starts_with(".")
+        {
+            continue;
+        }
+        let tests = std::fs::read_dir(group_path).unwrap();
+        for test_path in tests {
+            if let Ok(test_path) = test_path {
+                if test_path
+                    .path()
+                    .extension()
+                    .map_or(true, |ext| ext != "toml")
+                    || test_path.file_name().to_str().unwrap().starts_with(".")
+                {
+                    continue;
                 }
+                let test_config: RegressionTest =
+                    toml::from_str(std::fs::read_to_string(test_path.path()).unwrap().as_str())
+                        .unwrap();
+                println!("Testing {}", test_path.path().to_str().unwrap());
+                run_testcase(test_config);
             }
         }
     }
@@ -299,7 +322,6 @@ fn analyze_techniques() {
         println!("Analyzing {}", idx + 1);
         let test_config = RegressionTest {
             techniques: vec![
-                "full_house".to_string(),
                 "naked_single".to_string(),
                 "hidden_single".to_string(),
                 "locked_candidates".to_string(),
@@ -308,7 +330,9 @@ fn analyze_techniques() {
                 "basic_fish".to_string(),
                 "finned_fish".to_string(),
                 "franken_fish".to_string(),
-                "mutant_fish".to_string(),
+                "two_string_kite".to_string(),
+                "skyscraper".to_string(),
+                "rectangle_elimination".to_string(),
             ],
             board: Board {
                 initial_values: Some(sudoku.to_string()),

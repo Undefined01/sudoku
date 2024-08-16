@@ -3,11 +3,9 @@ use itertools::Itertools;
 
 use crate::sudoku::{CellIndex, Sudoku};
 
-use std::cell::{Cell, OnceCell};
+use std::cell::OnceCell;
 use std::iter::{Copied, FromIterator};
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Deref, DerefMut, Sub, SubAssign};
-use std::rc::Rc;
-use std::sync::LazyLock;
 use std::usize;
 
 #[derive(Debug, Clone)]

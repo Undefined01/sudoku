@@ -1,9 +1,4 @@
 use crate::solver::return_if_some;
-use crate::sudoku::{CellValue, Step, StepRule};
-use crate::utils::{CellSet, NamedCellSet};
-use crate::SudokuSolver;
-
-use std::iter::FromIterator;
 
 use arrayvec::ArrayVec;
 

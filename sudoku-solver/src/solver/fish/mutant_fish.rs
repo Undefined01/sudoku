@@ -1,50 +1,33 @@
 use super::fish_utils::check_is_fish;
 use crate::solver::return_if_some;
 use crate::sudoku::{CellValue, Step, StepRule};
-use crate::utils::{comb, combinations, CellSet, CombinationOptions, NamedCellSet};
+use crate::utils::{combinations, CellSet, CombinationOptions};
 use crate::SudokuSolver;
 
-use std::borrow::Borrow;
-use std::cell::{Cell, RefCell, UnsafeCell};
+use std::cell::UnsafeCell;
 use std::iter::FromIterator;
 
 use arrayvec::ArrayVec;
 use itertools::Itertools;
 
 pub fn search_mutant_fish(sudoku: &SudokuSolver, size: usize, value: CellValue) -> Option<Step> {
-    let blocks = ArrayVec::<_, 9>::from_iter(
+    let all_houses = ArrayVec::<_, 27>::from_iter(
         sudoku
-            .cells_in_blocks()
+            .all_constraints()
             .iter()
             .map(|s| sudoku.get_possible_cells_for_house_and_value(s, value))
             .filter(|s| s.size() > 1),
     );
-    let rows = ArrayVec::<_, 18>::from_iter(
-        sudoku
-            .cells_in_rows()
-            .iter()
-            .map(|s| sudoku.get_possible_cells_for_house_and_value(s, value))
-            .filter(|s| s.size() > 1)
-            .chain(blocks.iter().copied()),
-    );
-    let cols = ArrayVec::<_, 18>::from_iter(
-        sudoku
-            .cells_in_columns()
-            .iter()
-            .map(|s| sudoku.get_possible_cells_for_house_and_value(s, value))
-            .filter(|s| s.size() > 1)
-            .chain(blocks.iter().copied()),
-    );
 
-    if rows.is_empty() || cols.is_empty() {
+    if all_houses.is_empty() {
         return None;
     }
 
     let row_cells_stack = UnsafeCell::new((0u32, ArrayVec::<CellSet, 4>::new()));
     let ref mut on_selected = |pos: usize, element: usize| {
         let (used_cellset_set, row_cells_stack) = unsafe { &mut *row_cells_stack.get() };
-        let cellset_index = rows[element].idx();
-        let cellset = &**rows[element];
+        let cellset_index = all_houses[element].idx();
+        let cellset = &**all_houses[element];
         if pos == 0 {
             row_cells_stack.push(cellset.clone());
         } else {
@@ -60,7 +43,7 @@ pub fn search_mutant_fish(sudoku: &SudokuSolver, size: usize, value: CellValue) 
     };
     let ref mut on_unselected = |pos: usize, element: usize| {
         let (used_cellset_set, row_cells_stack) = unsafe { &mut *row_cells_stack.get() };
-        let cellset_index = rows[element].idx();
+        let cellset_index = all_houses[element].idx();
         row_cells_stack.pop().unwrap();
         *used_cellset_set &= !(1 << cellset_index);
     };
@@ -69,21 +52,21 @@ pub fn search_mutant_fish(sudoku: &SudokuSolver, size: usize, value: CellValue) 
         on_element_unselected: Some(on_unselected),
     };
 
-    for row_block_set in combinations(&rows, size, row_config) {
+    for row_block_set in combinations(&all_houses, size, row_config) {
         let (used_cellset_set, row_cells_stack) = unsafe { &*row_cells_stack.get() };
         let row_block_cells = row_cells_stack.last().unwrap();
 
         let col_cells_stack = UnsafeCell::new(ArrayVec::<CellSet, 4>::new());
         let ref mut on_selected = |pos: usize, element: usize| {
             let col_cells_stack = unsafe { &mut *col_cells_stack.get() };
-            let cellset_index = rows[element].idx();
+            let cellset_index = all_houses[element].idx();
 
             // coverset 使用的 block 和 baseset 不能重复，有重复时可以在 baseset 和 coverset 中去掉这个共同的 block 而形成一个更小的鱼
             if used_cellset_set & (1 << cellset_index) != 0 {
                 return false;
             }
 
-            let cellset = &**rows[element];
+            let cellset = &**all_houses[element];
             if pos == 0 {
                 col_cells_stack.push(cellset.clone());
             } else {
@@ -105,7 +88,7 @@ pub fn search_mutant_fish(sudoku: &SudokuSolver, size: usize, value: CellValue) 
             on_element_unselected: Some(on_unselected),
         };
 
-        for col_block_set in combinations(&cols, size, col_config) {
+        for col_block_set in combinations(&all_houses, size, col_config) {
             let col_cells_stack = unsafe { &*col_cells_stack.get() };
             let col_block_cells = col_cells_stack.last().unwrap();
 

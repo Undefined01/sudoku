@@ -80,7 +80,7 @@ impl Sudoku {
     }
 
     pub fn from_candidates(str: &str) -> Self {
-        let mut board = Vec::with_capacity(81);
+        let mut board = vec![None; 81];
         let mut candidates = vec![vec![]; 81];
         let mut possible_positions = vec![CellSet::new(); 10];
         let mut chars = str.chars();
@@ -90,11 +90,19 @@ impl Sudoku {
             if ch.is_digit(10) {
                 waiting_next_digit = true;
                 let digit = ch.to_digit(10).unwrap() as u8;
-                board.push(Some(digit));
                 candidates[idx].push(digit);
                 possible_positions[digit as usize].add(idx as u8);
+            } else if ch == '.' {
+                for digit in 1..=9 {
+                    candidates[idx].push(digit);
+                    possible_positions[digit as usize].add(idx as u8);
+                }
             } else {
                 if waiting_next_digit {
+                    assert!(candidates[idx].len() > 0);
+                    if candidates[idx].len() == 1 {
+                        board[idx] = Some(candidates[idx][0]);
+                    }
                     idx += 1;
                 }
                 waiting_next_digit = false;
@@ -299,4 +307,7 @@ pub enum StepRule {
     FinnedFish,
     FrankenFish,
     MutantFish,
+    TwoStringKite,
+    Skyscraper,
+    RectangleElimination,
 }
