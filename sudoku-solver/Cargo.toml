@@ -27,6 +27,7 @@ console_error_panic_hook = { version = "0.1.7", optional = true }
 wee_alloc = { version = "0.4.5", optional = true }
 itertools = "0.13.0"
 arrayvec = "0.7.4"
+bitset-core = "0.1.1"
 
 [dev-dependencies]
 wasm-bindgen-test = "0.3.34"

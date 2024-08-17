@@ -1,44 +1,12 @@
 use crate::solver::return_if_some;
-use crate::sudoku::{CellIndex, CellValue, Step, StepKind, StepRule};
-use crate::utils::{comb, NamedCellSet};
-use crate::SudokuSolver;
-
-use std::iter::FromIterator;
-
-use arrayvec::ArrayVec;
+use crate::solver::{Step, StepKind, SudokuSolver, Technique};
+use crate::sudoku::{CellIndex, CellValue};
+use crate::utils::NamedCellSet;
 
 pub fn search_rectangle_elimination(sudoku: &SudokuSolver, value: CellValue) -> Option<Step> {
     // 所有有且仅有两个 value 的行与列
-    let rows = ArrayVec::<_, 9>::from_iter(
-        sudoku
-            .candidate_cells_in_rows(value)
-            .iter()
-            .filter(|row| row.size() == 2)
-            .map(|row| {
-                let cell_ids = ArrayVec::<_, 2>::from_iter(row.iter());
-                let column_ids = ArrayVec::<_, 2>::from_iter(
-                    cell_ids.iter().map(|&cell| sudoku.column_id_of_cell(cell)),
-                );
-                (
-                    row,
-                    (column_ids[0], column_ids[1]),
-                    (cell_ids[0], cell_ids[1]),
-                )
-            }),
-    );
-    let cols = ArrayVec::<_, 9>::from_iter(
-        sudoku
-            .candidate_cells_in_columns(value)
-            .iter()
-            .filter(|col| col.size() == 2)
-            .map(|col| {
-                let cell_ids = ArrayVec::<_, 2>::from_iter(col.iter());
-                let row_ids = ArrayVec::<_, 2>::from_iter(
-                    cell_ids.iter().map(|&cell| sudoku.row_id_of_cell(cell)),
-                );
-                (col, (row_ids[0], row_ids[1]), (cell_ids[0], cell_ids[1]))
-            }),
-    );
+    let rows = sudoku.rows_with_only_two_possible_places(value);
+    let cols = sudoku.cols_with_only_two_possible_places(value);
 
     return_if_some!(inner1(
         sudoku,
@@ -61,7 +29,7 @@ pub fn search_rectangle_elimination(sudoku: &SudokuSolver, value: CellValue) -> 
 fn inner1(
     sudoku: &SudokuSolver,
     value: CellValue,
-    rows_with_two_places: &ArrayVec<(&NamedCellSet, (usize, usize), (CellIndex, CellIndex)), 9>,
+    rows_with_two_places: &[(NamedCellSet, (usize, usize), (CellIndex, CellIndex))],
     rows: &[NamedCellSet],
     cols: &[NamedCellSet],
 ) -> Option<Step> {
@@ -105,11 +73,17 @@ fn inner2(
             let block = &sudoku.cells_in_blocks()[block_idx];
             if sudoku
                 .get_possible_cells_for_house_and_value(block, value)
+                .is_empty()
+            {
+                continue;
+            }
+            if sudoku
+                .get_possible_cells_for_house_and_value(block, value)
                 .is_subset_of(&(row_2 | col_2))
             {
                 let mut step = Step::new(
                     StepKind::CandidateEliminated,
-                    StepRule::RectangleElimination,
+                    Technique::RectangleElimination,
                 );
                 step.add(
                     format!(

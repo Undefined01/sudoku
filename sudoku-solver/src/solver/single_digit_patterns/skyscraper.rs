@@ -1,44 +1,12 @@
 use crate::solver::return_if_some;
-use crate::sudoku::{CellIndex, CellValue, Step, StepKind, StepRule};
-use crate::utils::{comb, NamedCellSet};
-use crate::SudokuSolver;
-
-use std::iter::FromIterator;
-
-use arrayvec::ArrayVec;
+use crate::solver::{Step, StepKind, SudokuSolver, Technique};
+use crate::sudoku::{CellIndex, CellValue};
+use crate::utils::{comb_ref, NamedCellSet};
 
 pub fn search_skyscraper(sudoku: &SudokuSolver, value: CellValue) -> Option<Step> {
     // 所有有且仅有两个 value 的行与列
-    let rows = ArrayVec::<_, 9>::from_iter(
-        sudoku
-            .candidate_cells_in_rows(value)
-            .iter()
-            .filter(|row| row.size() == 2)
-            .map(|row| {
-                let cell_ids = ArrayVec::<_, 2>::from_iter(row.iter());
-                let column_ids = ArrayVec::<_, 2>::from_iter(
-                    cell_ids.iter().map(|&cell| sudoku.column_id_of_cell(cell)),
-                );
-                (
-                    row,
-                    (column_ids[0], column_ids[1]),
-                    (cell_ids[0], cell_ids[1]),
-                )
-            }),
-    );
-    let cols = ArrayVec::<_, 9>::from_iter(
-        sudoku
-            .candidate_cells_in_columns(value)
-            .iter()
-            .filter(|col| col.size() == 2)
-            .map(|col| {
-                let cell_ids = ArrayVec::<_, 2>::from_iter(col.iter());
-                let row_ids = ArrayVec::<_, 2>::from_iter(
-                    cell_ids.iter().map(|&cell| sudoku.row_id_of_cell(cell)),
-                );
-                (col, (row_ids[0], row_ids[1]), (cell_ids[0], cell_ids[1]))
-            }),
-    );
+    let rows = sudoku.rows_with_only_two_possible_places(value);
+    let cols = sudoku.cols_with_only_two_possible_places(value);
 
     return_if_some!(search_skyscraper_inner(
         sudoku,
@@ -59,16 +27,16 @@ pub fn search_skyscraper(sudoku: &SudokuSolver, value: CellValue) -> Option<Step
 fn search_skyscraper_inner(
     sudoku: &SudokuSolver,
     value: CellValue,
-    rows: &ArrayVec<(&NamedCellSet, (usize, usize), (CellIndex, CellIndex)), 9>,
+    rows: &[(NamedCellSet, (usize, usize), (CellIndex, CellIndex))],
     cols: &[NamedCellSet],
 ) -> Option<Step> {
     if rows.is_empty() {
         return None;
     }
 
-    for pair in comb(&rows, 2) {
-        let (row_a, (col_a, col_b), (cell_a, cell_b)) = pair[0];
-        let (row_b, (col_x, col_y), (cell_x, cell_y)) = pair[1];
+    for pair in comb_ref(&rows, 2) {
+        let &(ref row_a, (col_a, col_b), (cell_a, cell_b)) = pair[0];
+        let &(ref row_b, (col_x, col_y), (cell_x, cell_y)) = pair[1];
 
         let common_col;
         let cell_1;
@@ -104,7 +72,7 @@ fn search_skyscraper_inner(
         }
         eliminated_cells &= sudoku.possible_cells(value);
         if !eliminated_cells.is_empty() {
-            let mut step = Step::new(StepKind::CandidateEliminated, StepRule::Skyscraper);
+            let mut step = Step::new(StepKind::CandidateEliminated, Technique::Skyscraper);
             for cell in eliminated_cells.iter() {
                 let common_cols_name = cols[common_col].name();
                 step.add(

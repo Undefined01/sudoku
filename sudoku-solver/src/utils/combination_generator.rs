@@ -75,6 +75,9 @@ impl<'a, T: Copy> Iterator for CombinationIterator<'a, T> {
     fn next(&mut self) -> Option<Self::Item> {
         let mut skip_unselected = false;
         if self.stack.len() == 0 {
+            if self.n == 0 || self.k == 0 || self.n < self.k {
+                return None;
+            }
             self.stack.push(0);
             return_if_some!(self.try_update(0));
             skip_unselected = true;
@@ -147,14 +150,14 @@ mod tests {
         let arr = [1, 2, 3, 4, 5];
         let mut selected_order = vec![];
         let mut unselected_order = vec![];
-        let ref mut on_element_selected = |pos, element| {
+        let ref mut on_element_selected = |_, element| {
             if element != 3 {
                 selected_order.push(element);
                 return true;
             }
             false
         };
-        let ref mut on_element_unselected = |pos, element| {
+        let ref mut on_element_unselected = |_, element| {
             unselected_order.push(element);
         };
         let options = CombinationOptions {

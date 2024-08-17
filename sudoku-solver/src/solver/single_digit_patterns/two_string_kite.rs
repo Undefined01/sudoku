@@ -1,5 +1,5 @@
-use crate::sudoku::{CellValue, Step, StepKind, StepRule};
-use crate::SudokuSolver;
+use crate::solver::{Step, StepKind, SudokuSolver, Technique};
+use crate::sudoku::CellValue;
 
 use std::iter::FromIterator;
 
@@ -74,7 +74,7 @@ pub fn search_two_string_kite(sudoku: &SudokuSolver, value: CellValue) -> Option
 
             let eliminated_cell = sudoku.cell_index(row_b, col_b);
             if sudoku.can_fill(eliminated_cell, value) {
-                let mut step = Step::new(StepKind::CandidateEliminated, StepRule::TwoStringKite);
+                let mut step = Step::new(StepKind::CandidateEliminated, Technique::TwoStringKite);
                 step.add(
                     format!(
                         "for {}, there are only two places in {} and {}",

@@ -2,8 +2,9 @@ pub mod solver;
 mod sudoku;
 pub mod utils;
 
-pub use solver::SudokuSolver;
-pub use sudoku::{Step, Sudoku};
+use solver::Techniques;
+pub use solver::{Step, SudokuSolver, Technique};
+pub use sudoku::Sudoku;
 
 use wasm_bindgen::prelude::*;
 
@@ -15,5 +16,6 @@ static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 pub fn sudoku_one_step(sudoku: &str) -> Option<Step> {
     let sudoku = Sudoku::from_values(sudoku);
     let solver = SudokuSolver::new(sudoku);
-    solver.solve_one_step()
+    let techniques = Techniques::new();
+    solver.solve_one_step(&techniques)
 }

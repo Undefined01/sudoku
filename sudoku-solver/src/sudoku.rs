@@ -1,7 +1,6 @@
-use crate::utils::CellSet;
+use crate::utils::{CellSet, ValueSet};
 
 use itertools::Itertools;
-use std::fmt::Debug;
 use wasm_bindgen::prelude::*;
 
 pub type CellIndex = u8;
@@ -11,25 +10,25 @@ pub type CellValue = u8;
 pub struct Sudoku {
     board: Vec<Option<CellValue>>,
     // cell position -> possible values at that cell
-    candidates: Vec<Vec<CellValue>>,
+    candidates: Vec<ValueSet>,
     // value -> possible cell positions for that value
     possible_positions: Vec<CellSet>,
 }
 
 #[wasm_bindgen]
 impl Sudoku {
-    pub(crate) fn get_candidates(&self, idx: CellIndex) -> &Vec<CellValue> {
+    pub(crate) fn get_candidates(&self, idx: CellIndex) -> &ValueSet {
         &self.candidates[idx as usize]
     }
 
     pub(crate) fn add_candidate(&mut self, idx: CellIndex, value: CellValue) {
-        self.candidates[idx as usize].push(value);
+        self.candidates[idx as usize].add(value);
         self.possible_positions[value as usize].add(idx);
     }
 
     pub(crate) fn remove_candidate(&mut self, idx: CellIndex, value: CellValue) {
-        self.candidates[idx as usize].retain(|&x| x != value);
-        self.possible_positions[value as usize].delete(idx);
+        self.candidates[idx as usize].delete(value);
+        self.possible_positions[value as usize].remove(idx);
     }
 
     pub(crate) fn can_fill(&self, idx: CellIndex, value: CellValue) -> bool {
@@ -38,8 +37,8 @@ impl Sudoku {
 
     pub(crate) fn fill(&mut self, idx: CellIndex, value: CellValue) {
         self.board[idx as usize] = Some(value);
-        for &candidate in self.candidates[idx as usize].iter() {
-            self.possible_positions[candidate as usize].delete(idx);
+        for candidate in self.candidates[idx as usize].iter() {
+            self.possible_positions[candidate as usize].remove(idx);
         }
         self.candidates[idx as usize].clear();
     }
@@ -70,7 +69,7 @@ impl Sudoku {
                 board.push(None);
             }
         }
-        let candidates = vec![vec![]; 81];
+        let candidates = vec![ValueSet::new(); 81];
         let possible_positions = vec![CellSet::new(); 10];
         Self {
             board,
@@ -81,7 +80,7 @@ impl Sudoku {
 
     pub fn from_candidates(str: &str) -> Self {
         let mut board = vec![None; 81];
-        let mut candidates = vec![vec![]; 81];
+        let mut candidates = vec![ValueSet::new(); 81];
         let mut possible_positions = vec![CellSet::new(); 10];
         let mut chars = str.chars();
         let mut idx = 0;
@@ -90,18 +89,20 @@ impl Sudoku {
             if ch.is_digit(10) {
                 waiting_next_digit = true;
                 let digit = ch.to_digit(10).unwrap() as u8;
-                candidates[idx].push(digit);
+                candidates[idx].add(digit);
                 possible_positions[digit as usize].add(idx as u8);
             } else if ch == '.' {
+                debug_assert!(!waiting_next_digit);
                 for digit in 1..=9 {
-                    candidates[idx].push(digit);
+                    candidates[idx].add(digit);
                     possible_positions[digit as usize].add(idx as u8);
                 }
+                idx += 1;
             } else {
                 if waiting_next_digit {
-                    assert!(candidates[idx].len() > 0);
-                    if candidates[idx].len() == 1 {
-                        board[idx] = Some(candidates[idx][0]);
+                    assert!(candidates[idx].size() > 0);
+                    if candidates[idx].size() == 1 {
+                        board[idx] = Some(candidates[idx].iter().next().unwrap());
                     }
                     idx += 1;
                 }
@@ -140,7 +141,7 @@ impl Sudoku {
                 if let Some(value) = self.get_cell_value(idx as u8) {
                     return format!("{}", value);
                 }
-                return candidates.iter().map(|&x| x.to_string()).join("");
+                return candidates.iter().map(|x| x.to_string()).join("");
             })
             .collect_vec();
 
@@ -191,123 +192,4 @@ impl Sudoku {
         }
         s
     }
-}
-
-#[wasm_bindgen(getter_with_clone)]
-#[derive(Clone)]
-pub struct Step {
-    pub kind: StepKind,
-    pub rule: StepRule,
-    pub positions: Vec<StepPosition>,
-}
-
-#[wasm_bindgen]
-impl Step {
-    pub(crate) fn new(kind: StepKind, rule: StepRule) -> Self {
-        Self {
-            kind,
-            rule,
-            positions: vec![],
-        }
-    }
-
-    pub(crate) fn new_value_set(
-        rule: StepRule,
-        reason: String,
-        position: CellIndex,
-        value: CellValue,
-    ) -> Self {
-        let mut step = Self::new(StepKind::ValueSet, rule);
-        step.add(reason, position, value);
-        step
-    }
-
-    pub(crate) fn add(&mut self, reason: String, cell_index: CellIndex, value: CellValue) {
-        self.positions.push(StepPosition {
-            reason,
-            cell_index,
-            value,
-        });
-    }
-
-    pub(crate) fn is_empty(&self) -> bool {
-        self.positions.is_empty()
-    }
-
-    pub fn to_string(&self, sudoku: &Sudoku) -> String {
-        let mut f = String::new();
-        use std::fmt::Write;
-        match self.kind {
-            StepKind::ValueSet => {
-                for position in self.positions.iter() {
-                    write!(
-                        f,
-                        "[{:?}] {} => {}={}\n",
-                        self.rule,
-                        position.reason,
-                        sudoku.get_cell_name(position.cell_index),
-                        position.value,
-                    )
-                    .unwrap();
-                }
-            }
-            StepKind::CandidateEliminated => {
-                for position in self.positions.iter() {
-                    write!(
-                        f,
-                        "[{:?}] {} => {}<>{}\n",
-                        self.rule,
-                        position.reason,
-                        sudoku.get_cell_name(position.cell_index),
-                        position.value,
-                    )
-                    .unwrap();
-                }
-            }
-        }
-        f
-    }
-}
-
-#[wasm_bindgen(getter_with_clone)]
-#[derive(Clone)]
-pub struct StepPosition {
-    pub reason: String,
-    pub cell_index: CellIndex,
-    pub value: CellValue,
-}
-
-impl StepPosition {
-    pub(crate) fn new(reason: String, cell_index: CellIndex, value: CellValue) -> Self {
-        Self {
-            reason,
-            cell_index,
-            value,
-        }
-    }
-}
-
-#[wasm_bindgen]
-#[derive(Debug, Clone)]
-pub enum StepKind {
-    ValueSet,
-    CandidateEliminated,
-}
-
-#[wasm_bindgen]
-#[derive(Debug, Clone, PartialEq)]
-pub enum StepRule {
-    FullHouse,
-    NakedSingle,
-    HiddenSingle,
-    LockedCandidates,
-    HiddenSubset,
-    NakedSubset,
-    BasicFish,
-    FinnedFish,
-    FrankenFish,
-    MutantFish,
-    TwoStringKite,
-    Skyscraper,
-    RectangleElimination,
 }

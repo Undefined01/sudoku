@@ -63,6 +63,53 @@ impl<'a, T: Copy> Iterator for CombinationIterator<'a, T> {
     }
 }
 
+pub fn combinations_ref<'a, T>(arr: &'a [T], size: usize) -> CombinationRefIterator<'a, T> {
+    debug_assert!(arr.len() <= MAX_ARRAY_LEN);
+    debug_assert!(size <= MAX_SIZE);
+
+    if arr.len() < size {
+        return CombinationRefIterator {
+            combination_cache: CACHE[0][0].clone(),
+            arr,
+            idx: usize::MAX,
+        };
+    }
+
+    let combination_cache = CACHE[arr.len()][size].clone();
+    CombinationRefIterator {
+        combination_cache,
+        arr,
+        idx: 0,
+    }
+}
+
+pub struct CombinationRefIterator<'a, T> {
+    combination_cache: Arc<Vec<Vec<usize>>>,
+    arr: &'a [T],
+    idx: usize,
+}
+
+impl<'a, T> Iterator for CombinationRefIterator<'a, T> {
+    type Item = ArrayVec<&'a T, MAX_SIZE>;
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let len = self.combination_cache.len() - self.idx;
+        (len, Some(len))
+    }
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.idx >= self.combination_cache.len() {
+            return None;
+        }
+        let mut combination = ArrayVec::new();
+        for &element in &self.combination_cache[self.idx] {
+            combination.push(&self.arr[element]);
+        }
+        self.idx += 1;
+        Some(combination)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

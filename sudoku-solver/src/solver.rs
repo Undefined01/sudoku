@@ -1,11 +1,18 @@
-pub mod fish;
-pub mod single_digit_patterns;
-use crate::sudoku::{CellIndex, CellValue, Step, StepKind, StepRule, Sudoku};
-use crate::utils::{CellSet, NamedCellSet};
+mod fish;
+mod intersection;
+mod single;
+mod single_digit_patterns;
+mod subset;
+mod wing;
+
+use crate::sudoku::{CellIndex, CellValue, Sudoku};
+use crate::utils::{CellSet, NamedCellSet, ValueSet};
 
 use std::cell::OnceCell;
 use std::collections::HashSet;
+use std::fmt::Display;
 
+use arrayvec::ArrayVec;
 use itertools::Itertools;
 use wasm_bindgen::prelude::*;
 
@@ -20,12 +27,20 @@ pub struct SudokuSolver {
     row_id_of_cell: Vec<usize>,
     column_id_of_cell: Vec<usize>,
 
+    filled_cells: CellSet,
+    unfilled_cells: CellSet,
+
     cells_in_rows: Vec<NamedCellSet>,
     cells_in_columns: Vec<NamedCellSet>,
     cells_in_blocks: Vec<NamedCellSet>,
     candidate_cells_in_rows: OnceCell<Vec<Vec<NamedCellSet>>>,
     candidate_cells_in_columns: OnceCell<Vec<Vec<NamedCellSet>>>,
     candidate_cells_in_blocks: OnceCell<Vec<Vec<NamedCellSet>>>,
+
+    rows_with_only_two_possible_places:
+        Vec<OnceCell<ArrayVec<(NamedCellSet, (usize, usize), (u8, u8)), 9>>>,
+    cols_with_only_two_possible_places:
+        Vec<OnceCell<ArrayVec<(NamedCellSet, (usize, usize), (u8, u8)), 9>>>,
 
     possible_positions_for_house_and_value: Vec<OnceCell<NamedCellSet>>,
 }
@@ -45,20 +60,36 @@ impl SudokuSolver {
         &self.sudoku
     }
 
+    pub(crate) fn cells(&self) -> impl Iterator<Item = CellIndex> {
+        (0..81).map(|x| x as CellIndex)
+    }
+
     pub(crate) fn cell_index(&self, row: usize, col: usize) -> CellIndex {
         self.sudoku.get_cell_position(row, col)
+    }
+
+    pub(crate) fn cell_position(&self, cell: CellIndex) -> (usize, usize) {
+        (cell as usize / 9, cell as usize % 9)
     }
 
     pub(crate) fn cell_value(&self, idx: CellIndex) -> Option<CellValue> {
         self.sudoku.get_cell_value(idx)
     }
 
-    pub(crate) fn candidates(&self, idx: CellIndex) -> &Vec<CellValue> {
+    pub(crate) fn candidates(&self, idx: CellIndex) -> &ValueSet {
         self.sudoku.get_candidates(idx)
     }
 
     pub(crate) fn possible_cells(&self, value: CellValue) -> &CellSet {
         self.sudoku.get_possible_cells(value)
+    }
+
+    pub(crate) fn unfilled_cells(&self) -> &CellSet {
+        &self.unfilled_cells
+    }
+
+    pub(crate) fn filled_cells(&self) -> &CellSet {
+        &self.filled_cells
     }
 
     pub(crate) fn can_fill(&self, idx: CellIndex, value: CellValue) -> bool {
@@ -165,6 +196,54 @@ impl SudokuSolver {
         })[value as usize - 1]
     }
 
+    pub(crate) fn rows_with_only_two_possible_places(
+        &self,
+        value: CellValue,
+    ) -> &[(NamedCellSet, (usize, usize), (u8, u8))] {
+        self.rows_with_only_two_possible_places[value as usize - 1].get_or_init(|| {
+            ArrayVec::<_, 9>::from_iter(
+                self.candidate_cells_in_rows(value)
+                    .iter()
+                    .filter(|row| row.size() == 2)
+                    .map(|row| {
+                        let cell_ids = ArrayVec::<_, 2>::from_iter(row.iter());
+                        let column_ids = ArrayVec::<_, 2>::from_iter(
+                            cell_ids.iter().map(|&cell| self.column_id_of_cell(cell)),
+                        );
+                        (
+                            row.clone(),
+                            (column_ids[0], column_ids[1]),
+                            (cell_ids[0], cell_ids[1]),
+                        )
+                    }),
+            )
+        })
+    }
+
+    pub(crate) fn cols_with_only_two_possible_places(
+        &self,
+        value: CellValue,
+    ) -> &[(NamedCellSet, (usize, usize), (u8, u8))] {
+        self.cols_with_only_two_possible_places[value as usize - 1].get_or_init(|| {
+            ArrayVec::<_, 9>::from_iter(
+                self.candidate_cells_in_columns(value)
+                    .iter()
+                    .filter(|col| col.size() == 2)
+                    .map(|col| {
+                        let cell_ids = ArrayVec::<_, 2>::from_iter(col.iter());
+                        let row_ids = ArrayVec::<_, 2>::from_iter(
+                            cell_ids.iter().map(|&cell| self.row_id_of_cell(cell)),
+                        );
+                        (
+                            col.clone(),
+                            (row_ids[0], row_ids[1]),
+                            (cell_ids[0], cell_ids[1]),
+                        )
+                    }),
+            )
+        })
+    }
+
     pub(crate) fn get_possible_cells_for_house_and_value(
         &self,
         house: &NamedCellSet,
@@ -199,6 +278,17 @@ impl SudokuSolver {
         let mut cells_in_columns = vec![];
         let mut cells_in_blocks = vec![];
         let possible_positions_for_house_and_value = vec![OnceCell::new(); 27 * 9];
+
+        let filled_cells = CellSet::from_iter(
+            (0..81)
+                .filter(|&cell| sudoku.get_cell_value(cell).is_some())
+                .collect_vec(),
+        );
+        let unfilled_cells = CellSet::from_iter(
+            (0..81)
+                .filter(|&cell| sudoku.get_cell_value(cell).is_none())
+                .collect_vec(),
+        );
 
         for block_x in (0..9).step_by(3) {
             for block_y in (0..9).step_by(3) {
@@ -251,6 +341,7 @@ impl SudokuSolver {
                 constraints_of_cell[pos].push(cells_in_blocks[block_idx].clone());
                 house_union_of_cell[pos] =
                     &(&cells_in_rows[row] | &cells_in_columns[col]) | &cells_in_blocks[block_idx];
+                house_union_of_cell[pos].remove(pos as CellIndex);
             }
         }
 
@@ -264,12 +355,18 @@ impl SudokuSolver {
             row_id_of_cell,
             column_id_of_cell,
 
+            filled_cells,
+            unfilled_cells,
+
             cells_in_rows,
             cells_in_columns,
             cells_in_blocks,
             candidate_cells_in_rows: OnceCell::new(),
             candidate_cells_in_columns: OnceCell::new(),
             candidate_cells_in_blocks: OnceCell::new(),
+
+            rows_with_only_two_possible_places: vec![OnceCell::new(); 9],
+            cols_with_only_two_possible_places: vec![OnceCell::new(); 9],
 
             possible_positions_for_house_and_value,
         }
@@ -280,6 +377,9 @@ impl SudokuSolver {
         for house in self.all_constraints.iter() {
             for (i, cell1) in house.iter().enumerate() {
                 if self.cell_value(cell1).is_none() {
+                    if self.candidates(cell1).size() == 0 || self.candidates(cell1).size() > 9 {
+                        invalid_positions.push(cell1);
+                    }
                     continue;
                 }
                 for cell2 in house.iter().take(i) {
@@ -316,14 +416,31 @@ impl SudokuSolver {
     }
 
     pub fn apply_step(&mut self, step: &Step) {
-        self.possible_positions_for_house_and_value = vec![OnceCell::new(); 27 * 9];
+        self.possible_positions_for_house_and_value
+            .iter_mut()
+            .for_each(|x| {
+                x.take();
+            });
         self.candidate_cells_in_rows.take();
         self.candidate_cells_in_columns.take();
         self.candidate_cells_in_blocks.take();
+        self.rows_with_only_two_possible_places
+            .iter_mut()
+            .for_each(|x| {
+                x.take();
+            });
+        self.rows_with_only_two_possible_places
+            .iter_mut()
+            .for_each(|x| {
+                x.take();
+            });
+
         match step.kind {
             StepKind::ValueSet => {
                 for position in step.positions.iter() {
                     self.sudoku.fill(position.cell_index, position.value);
+                    self.filled_cells.add(position.cell_index);
+                    self.unfilled_cells.remove(position.cell_index);
                     for cell in self.house_union_of_cell[position.cell_index as usize].iter() {
                         if cell == position.cell_index {
                             continue;
@@ -350,282 +467,245 @@ impl SudokuSolver {
         true
     }
 
-    pub fn solve_full_house(&self) -> Option<Step> {
-        for house in self.all_constraints.iter() {
-            let unfilled_cells_count = house
-                .iter()
-                .filter(|&cell| self.cell_value(cell).is_none())
-                .count();
-            if unfilled_cells_count == 1 {
-                let unfilled_cell = house
-                    .iter()
-                    .filter(|&cell| self.cell_value(cell).is_none())
-                    .next()
-                    .unwrap();
-                let missing_value = self
-                    .candidates(unfilled_cell)
-                    .iter()
-                    .cloned()
-                    .next()
-                    .unwrap();
-                return Some(Step::new_value_set(
-                    StepRule::FullHouse,
-                    format!(
-                        "{} is the only missing cell in {}",
-                        self.get_cell_name(unfilled_cell),
-                        house.name()
-                    ),
-                    unfilled_cell,
-                    missing_value,
-                ));
-            }
-        }
-        None
-    }
-
-    pub fn solve_naked_single(&self) -> Option<Step> {
-        for house in self.all_constraints.iter() {
-            for cell in house.iter() {
-                if self.candidates(cell).len() == 1 {
-                    let &value = self.candidates(cell).iter().next().unwrap();
-                    return Some(Step::new_value_set(
-                        StepRule::NakedSingle,
-                        format!(
-                            "{} is the only possible value to fill {}",
-                            value,
-                            self.get_cell_name(cell)
-                        ),
-                        cell,
-                        value,
-                    ));
-                }
-            }
-        }
-        None
-    }
-
-    pub fn solve_hidden_single(&self) -> Option<Step> {
-        for house in self.all_constraints.iter() {
-            for value in 1..=9 {
-                let possible_cells = self.get_possible_cells_for_house_and_value(house, value);
-                if possible_cells.size() == 1 {
-                    let target_cell = possible_cells.iter().next().unwrap();
-                    return Some(Step::new_value_set(
-                        StepRule::HiddenSingle,
-                        format!(
-                            "in {}, {} is the only possible cell that can be {}",
-                            house.name(),
-                            self.get_cell_name(target_cell),
-                            value,
-                        ),
-                        target_cell,
-                        value,
-                    ));
-                }
-            }
-        }
-        None
-    }
-
-    // 当 House A 中的一个数字只出现在 House A & House B （A 和 B的交集）中时，这个数字不可能再出现在 House B 中的其他单元格中
-    pub fn solve_locked_candidates(&self) -> Option<Step> {
-        let check = |house_a: &NamedCellSet, house_b: &NamedCellSet| -> Option<Step> {
-            let intersection = house_a & house_b;
-            if intersection.is_empty() {
-                return None;
-            }
-
-            let mut step = Step::new(StepKind::CandidateEliminated, StepRule::LockedCandidates);
-
-            for value in 1..=9 {
-                let possible_cells_in_a =
-                    self.get_possible_cells_for_house_and_value(house_a, value);
-                if possible_cells_in_a.is_empty()
-                    || !possible_cells_in_a.is_subset_of(&intersection)
-                {
-                    continue;
-                }
-                for cell in house_b.iter() {
-                    if intersection.has(cell) {
-                        continue;
-                    }
-                    if self.can_fill(cell, value) {
-                        step.add(
-                            format!(
-                                "in {}, {} can only be in {} & {}",
-                                house_a.name(),
-                                value,
-                                house_a.name(),
-                                house_b.name(),
-                            ),
-                            cell,
-                            value,
-                        );
-                    }
-                }
-                if !step.is_empty() {
-                    return Some(step);
-                }
-            }
-            None
-        };
-
-        for block in &self.cells_in_blocks {
-            for row in &self.cells_in_rows {
-                let step = check(block, row);
-                if step.is_some() {
-                    return step;
-                }
-                let step = check(row, block);
-                if step.is_some() {
-                    return step;
-                }
-            }
-            for column in &self.cells_in_columns {
-                let step = check(block, column);
-                if step.is_some() {
-                    return step;
-                }
-                let step = check(column, block);
-                if step.is_some() {
-                    return step;
-                }
-            }
-        }
-        None
-    }
-
-    // 在一个 House 中，若任意 n 个数字只可能出现在相同 n 个（或更少）单元格中，则这 n 个单元格中不可能出现其他数字
-    pub fn solve_hidden_subset(&self) -> Option<Step> {
-        let mut step = Step::new(StepKind::CandidateEliminated, StepRule::HiddenSubset);
-
-        for house in self.all_constraints.iter() {
-            let mut possible_cells_in_houses = vec![];
-            for value in 1..=9 {
-                let possible_cells_in_house =
-                    self.get_possible_cells_for_house_and_value(house, value);
-                if !possible_cells_in_house.is_empty() {
-                    possible_cells_in_houses.push((value, possible_cells_in_house));
-                }
-            }
-
-            for size in 2..=4 {
-                let possible_house_cells_for_candidate_in_size: Vec<_> = possible_cells_in_houses
-                    .iter()
-                    .filter(|(_, cells)| cells.size() <= size)
-                    .collect();
-
-                if possible_house_cells_for_candidate_in_size.len() < size {
-                    continue;
-                }
-
-                for subset in possible_house_cells_for_candidate_in_size
-                    .iter()
-                    .combinations(size)
-                {
-                    let cell_union =
-                        CellSet::union_multiple(subset.iter().map(|(_, cells)| &***cells));
-                    let values_in_subset: HashSet<_> =
-                        subset.iter().map(|(value, _)| *value).collect();
-
-                    if cell_union.size() <= size {
-                        for cell in cell_union.iter() {
-                            for value in 1..=9 {
-                                if !values_in_subset.contains(&value) && self.can_fill(cell, value)
-                                {
-                                    step.add(
-                                        format!(
-                                            "in {}, {} only appears in {}",
-                                            house.name(),
-                                            values_in_subset.iter().sorted().join(","),
-                                            self.get_cellset_string(&cell_union),
-                                        ),
-                                        cell,
-                                        value,
-                                    );
-                                }
-                            }
-                        }
-                        if !step.is_empty() {
-                            return Some(step);
-                        }
-                    }
-                }
-            }
-        }
-        None
-    }
-
-    // 当一个 House 中的 n 个单元格只包含相同的 n 个（或更少）数字时，这 n 个数字不可能出现在这个 House 中的其他单元格中
-    pub fn solve_naked_subset(&self) -> Option<Step> {
-        for house in self.all_constraints.iter() {
-            for size in 2..=4 {
-                let mut step = Step::new(StepKind::CandidateEliminated, StepRule::NakedSubset);
-
-                for subset in house
-                    .iter()
-                    .filter(|&cell| {
-                        !self.candidates(cell).is_empty() && self.candidates(cell).len() <= size
-                    })
-                    .combinations(size)
-                {
-                    let value_union: HashSet<_> = subset
-                        .iter()
-                        .flat_map(|&cell| self.candidates(cell).iter().copied())
-                        .collect();
-                    let cells_in_subset = CellSet::from_cells(subset);
-
-                    if value_union.len() > size {
-                        continue;
-                    }
-
-                    for cell in house.iter() {
-                        if cells_in_subset.has(cell) {
-                            continue;
-                        }
-                        for &value in value_union.iter().sorted() {
-                            if self.can_fill(cell, value) {
-                                step.add(
-                                    format!(
-                                        "in {}, {} only contains {}",
-                                        house.name(),
-                                        self.get_cellset_string(&cells_in_subset),
-                                        value_union.iter().sorted().join(","),
-                                    ),
-                                    cell,
-                                    value,
-                                );
-                            }
-                        }
-                    }
-
-                    if !step.is_empty() {
-                        return Some(step);
-                    }
-                }
-            }
-        }
-        None
-    }
-
-    pub fn solve_one_step(&self) -> Option<Step> {
-        let solving_techniques = [
-            // SudokuSolver::solve_full_house,
-            SudokuSolver::solve_naked_single,
-            SudokuSolver::solve_hidden_single,
-            SudokuSolver::solve_locked_candidates,
-            SudokuSolver::solve_hidden_subset,
-            SudokuSolver::solve_naked_subset,
-            fish::solve_basic_fish,
-            fish::solve_finned_fish,
-            fish::solve_franken_fish,
-            // fish::solve_mutant_fish,
-        ];
-        for technique in solving_techniques.iter() {
+    pub fn solve_one_step(&self, techniques: &Techniques) -> Option<Step> {
+        for technique in techniques.0.iter() {
             if let Some(step) = technique(self) {
                 return Some(step);
             }
         }
         None
+    }
+}
+
+#[wasm_bindgen(getter_with_clone)]
+#[derive(Clone)]
+pub struct Step {
+    pub kind: StepKind,
+    pub technique: Technique,
+    pub positions: Vec<StepPosition>,
+}
+
+#[wasm_bindgen]
+impl Step {
+    pub(crate) fn new(kind: StepKind, technique: Technique) -> Self {
+        Self {
+            kind,
+            technique,
+            positions: vec![],
+        }
+    }
+
+    pub(crate) fn new_value_set(
+        technique: Technique,
+        reason: String,
+        position: CellIndex,
+        value: CellValue,
+    ) -> Self {
+        let mut step = Self::new(StepKind::ValueSet, technique);
+        step.add(reason, position, value);
+        step
+    }
+
+    pub(crate) fn new_elimination(technique: Technique) -> Self {
+        let step = Self::new(StepKind::CandidateEliminated, technique);
+        step
+    }
+
+    pub(crate) fn add(&mut self, reason: String, cell_index: CellIndex, value: CellValue) {
+        self.positions.push(StepPosition {
+            reason,
+            cell_index,
+            value,
+        });
+    }
+
+    pub(crate) fn is_empty(&self) -> bool {
+        self.positions.is_empty()
+    }
+
+    pub fn to_string(&self, sudoku: &Sudoku) -> String {
+        let mut f = String::new();
+        use std::fmt::Write;
+        match self.kind {
+            StepKind::ValueSet => {
+                for position in self.positions.iter() {
+                    write!(
+                        f,
+                        "[{:?}] {} => {}={}\n",
+                        self.technique,
+                        position.reason,
+                        sudoku.get_cell_name(position.cell_index),
+                        position.value,
+                    )
+                    .unwrap();
+                }
+            }
+            StepKind::CandidateEliminated => {
+                for position in self.positions.iter() {
+                    write!(
+                        f,
+                        "[{:?}] {} => {}<>{}\n",
+                        self.technique,
+                        position.reason,
+                        sudoku.get_cell_name(position.cell_index),
+                        position.value,
+                    )
+                    .unwrap();
+                }
+            }
+        }
+        f
+    }
+}
+
+#[wasm_bindgen(getter_with_clone)]
+#[derive(Clone)]
+pub struct StepPosition {
+    pub reason: String,
+    pub cell_index: CellIndex,
+    pub value: CellValue,
+}
+
+#[wasm_bindgen]
+#[derive(Debug, Clone)]
+pub enum StepKind {
+    ValueSet,
+    CandidateEliminated,
+}
+
+pub type SolverFn = fn(sudoku: &SudokuSolver) -> Option<Step>;
+
+#[wasm_bindgen]
+#[derive(Debug, Clone, PartialEq)]
+pub enum Technique {
+    // Single
+    FullHouse,
+    NakedSingle,
+    HiddenSingle,
+
+    // Intersection
+    LockedCandidates,
+
+    // Subset
+    HiddenSubset,
+    NakedSubset,
+
+    // Fish
+    BasicFish,
+    FinnedFish,
+    FrankenFish,
+    MutantFish,
+
+    // Single digit patterns
+    TwoStringKite,
+    Skyscraper,
+    RectangleElimination,
+
+    // Wing
+    WWing,
+    XYWing,
+    XYZWing,
+}
+
+impl Technique {
+    pub fn solver_fn(&self) -> SolverFn {
+        match self {
+            Technique::FullHouse => single::solve_full_house,
+            Technique::NakedSingle => single::solve_naked_single,
+            Technique::HiddenSingle => single::solve_hidden_single,
+            Technique::LockedCandidates => intersection::solve_locked_candidates,
+            Technique::HiddenSubset => subset::solve_hidden_subset,
+            Technique::NakedSubset => subset::solve_naked_subset,
+            Technique::BasicFish => fish::solve_basic_fish,
+            Technique::FinnedFish => fish::solve_finned_fish,
+            Technique::FrankenFish => fish::solve_franken_fish,
+            Technique::MutantFish => fish::solve_mutant_fish,
+            Technique::TwoStringKite => single_digit_patterns::solve_two_string_kite,
+            Technique::Skyscraper => single_digit_patterns::solve_skyscraper,
+            Technique::RectangleElimination => single_digit_patterns::solve_rectangle_elimination,
+            Technique::WWing => wing::solve_w_wing,
+            Technique::XYWing => wing::solve_xy_wing,
+            Technique::XYZWing => wing::solve_xyz_wing,
+        }
+    }
+}
+
+impl<S: AsRef<str> + Display> From<S> for Technique {
+    fn from(name: S) -> Self {
+        match name.as_ref() {
+            "FullHouse" => Technique::FullHouse,
+            "full_house" => Technique::FullHouse,
+            "NakedSingle" => Technique::NakedSingle,
+            "naked_single" => Technique::NakedSingle,
+            "HiddenSingle" => Technique::HiddenSingle,
+            "hidden_single" => Technique::HiddenSingle,
+
+            "LockedCandidates" => Technique::LockedCandidates,
+            "locked_candidates" => Technique::LockedCandidates,
+
+            "HiddenSubset" => Technique::HiddenSubset,
+            "hidden_subset" => Technique::HiddenSubset,
+            "NakedSubset" => Technique::NakedSubset,
+            "naked_subset" => Technique::NakedSubset,
+
+            "BasicFish" => Technique::BasicFish,
+            "basic_fish" => Technique::BasicFish,
+            "FinnedFish" => Technique::FinnedFish,
+            "finned_fish" => Technique::FinnedFish,
+            "FrankenFish" => Technique::FrankenFish,
+            "franken_fish" => Technique::FrankenFish,
+            "MutantFish" => Technique::MutantFish,
+            "mutant_fish" => Technique::MutantFish,
+
+            "TwoStringKite" => Technique::TwoStringKite,
+            "two_string_kite" => Technique::TwoStringKite,
+            "Skyscraper" => Technique::Skyscraper,
+            "skyscraper" => Technique::Skyscraper,
+            "RectangleElimination" => Technique::RectangleElimination,
+            "rectangle_elimination" => Technique::RectangleElimination,
+
+            "WWing" => Technique::WWing,
+            "w_wing" => Technique::WWing,
+            "XYWing" => Technique::XYWing,
+            "xy_wing" => Technique::XYWing,
+            "XYZWing" => Technique::XYZWing,
+            "xyz_wing" => Technique::XYZWing,
+
+            _ => panic!("Unknown technique: {}", name),
+        }
+    }
+}
+
+#[wasm_bindgen]
+#[derive(Debug, Clone)]
+pub struct Techniques(Vec<fn(sudoku: &SudokuSolver) -> Option<Step>>);
+
+impl Techniques {
+    pub fn new() -> Self {
+        let default_techniques = [
+            Technique::NakedSingle,
+            Technique::HiddenSingle,
+            Technique::LockedCandidates,
+            Technique::HiddenSubset,
+            Technique::NakedSubset,
+            Technique::TwoStringKite,
+            Technique::Skyscraper,
+            Technique::RectangleElimination,
+            Technique::WWing,
+            Technique::XYWing,
+            Technique::XYZWing,
+            Technique::BasicFish,
+            Technique::FinnedFish,
+            Technique::FrankenFish,
+        ];
+        Self::from(default_techniques.into_iter())
+    }
+
+    pub fn from(techniques: impl Iterator<Item = impl Into<Technique>>) -> Self {
+        let mut funcs: Vec<fn(sudoku: &SudokuSolver) -> Option<Step>> = vec![];
+        for technique in techniques {
+            funcs.push(technique.into().solver_fn());
+        }
+        Self(funcs)
     }
 }

@@ -2,7 +2,7 @@ use std::{collections::HashMap, time::Duration};
 
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
-use sudoku_solver::{solver, Sudoku, SudokuSolver};
+use sudoku_solver::{solver::Techniques, Sudoku, SudokuSolver, Technique};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Board {
@@ -63,34 +63,8 @@ fn load_sudoku(test_config: &RegressionTest) -> SudokuSolver {
     solver
 }
 
-fn load_techinques(
-    techniques: &Vec<String>,
-) -> Vec<fn(&SudokuSolver) -> std::option::Option<sudoku_solver::Step>> {
-    let mut technique_fns =
-        Vec::<fn(&SudokuSolver) -> std::option::Option<sudoku_solver::Step>>::new();
-    for technique in techniques {
-        match technique.as_str() {
-            "full_house" => technique_fns.push(SudokuSolver::solve_full_house),
-            "naked_single" => technique_fns.push(SudokuSolver::solve_naked_single),
-            "hidden_single" => technique_fns.push(SudokuSolver::solve_hidden_single),
-            "locked_candidates" => technique_fns.push(SudokuSolver::solve_locked_candidates),
-            "hidden_subset" => technique_fns.push(SudokuSolver::solve_hidden_subset),
-            "naked_subset" => technique_fns.push(SudokuSolver::solve_naked_subset),
-            "basic_fish" => technique_fns.push(solver::fish::solve_basic_fish),
-            "finned_fish" => technique_fns.push(solver::fish::solve_finned_fish),
-            "franken_fish" => technique_fns.push(solver::fish::solve_franken_fish),
-            "mutant_fish" => technique_fns.push(solver::fish::solve_mutant_fish),
-            "two_string_kite" => {
-                technique_fns.push(solver::single_digit_patterns::solve_two_string_kite)
-            }
-            "skyscraper" => technique_fns.push(solver::single_digit_patterns::solve_skyscraper),
-            "rectangle_elimination" => {
-                technique_fns.push(solver::single_digit_patterns::solve_rectangle_elimination)
-            }
-            _ => panic!("Unknown technique: {}", technique),
-        }
-    }
-    technique_fns
+fn load_techinques(techniques: &Vec<String>) -> Techniques {
+    Techniques::from(techniques.iter().map(|name| name.as_str()))
 }
 
 fn run_testcase(test_config: RegressionTest) {
@@ -100,20 +74,22 @@ fn run_testcase(test_config: RegressionTest) {
     let mut steps = vec![];
     loop {
         let mut step_found = false;
-        for technique in &techniques {
-            if let Some(step) = technique(&solver) {
-                step_found = true;
-                solver.apply_step(&step);
-                steps.push(step);
-                break;
-            }
+        if let Some(step) = solver.solve_one_step(&techniques) {
+            step_found = true;
+            solver.apply_step(&step);
+            steps.push(step);
         }
+
+        assert!(
+            solver.get_invalid_positions().is_empty(),
+            "Invalid positions found: {:?}",
+            solver.get_invalid_positions()
+        );
+
         if !step_found || solver.is_completed() {
             break;
         }
     }
-
-    assert!(solver.get_invalid_positions().is_empty());
 
     if let Some(solution) = test_config.board.solution {
         assert!(solver.is_completed());
@@ -146,18 +122,20 @@ struct Statistic {
 
 fn analyze_testcase(test_config: RegressionTest, statistics: &mut HashMap<String, Statistic>) {
     let mut solver = load_sudoku(&test_config);
-    let techniques = test_config
-        .techniques
-        .iter()
-        .zip(load_techinques(&test_config.techniques).iter())
-        .map(|(name, f)| (name.clone(), f.clone()))
-        .collect::<Vec<_>>();
+    let candidates_count = solver
+        .sudoku()
+        .to_candidate_string()
+        .chars()
+        .filter(|c| c.is_digit(10))
+        .count()
+        - 81;
 
     let mut steps = vec![];
     loop {
         let mut step_found = false;
         let mut new_steps = vec![];
-        for (name, technique) in &techniques {
+        for name in &test_config.techniques {
+            let technique = Technique::from(name.as_str()).solver_fn();
             let start_time = std::time::Instant::now();
             let step = technique(&solver);
             let elapsed_time = start_time.elapsed();
@@ -200,6 +178,25 @@ fn analyze_testcase(test_config: RegressionTest, statistics: &mut HashMap<String
             break;
         }
     }
+
+    if solver.is_completed() {
+        println!("Solved");
+    } else {
+        let unsolved_candidates_count = solver
+            .sudoku()
+            .to_candidate_string()
+            .chars()
+            .filter(|c| c.is_digit(10))
+            .count()
+            - 81;
+        if unsolved_candidates_count > candidates_count {
+            println!("{}", solver.sudoku().to_candidate_string());
+        }
+        println!(
+            "Failed: {} -> {}",
+            candidates_count, unsolved_candidates_count
+        );
+    }
 }
 
 fn generate_testcase(filename: String, mut test_config: RegressionTest) {
@@ -213,14 +210,23 @@ fn generate_testcase(filename: String, mut test_config: RegressionTest) {
     let mut steps = vec![];
     loop {
         let mut step_found = false;
-        for technique in &techniques {
-            if let Some(step) = technique(&solver) {
-                step_found = true;
-                solver.apply_step(&step);
-                steps.push(step);
-                break;
-            }
+        if let Some(step) = solver.solve_one_step(&techniques) {
+            step_found = true;
+            solver.apply_step(&step);
+            steps.push(step);
         }
+
+        assert!(
+            solver.get_invalid_positions().is_empty(),
+            "Board:\n{}\nInvalid positions: {:?}\nSteps:{}",
+            solver.sudoku().to_candidate_string(),
+            solver.get_invalid_positions(),
+            steps
+                .iter()
+                .map(|s| s.to_string(solver.sudoku()).trim().to_string())
+                .join("\n")
+        );
+
         if !step_found || solver.is_completed() {
             break;
         }
@@ -230,7 +236,8 @@ fn generate_testcase(filename: String, mut test_config: RegressionTest) {
         steps
             .iter()
             .map(|s| s.to_string(solver.sudoku()).trim().to_string())
-            .join("\n"),
+            .join("\n")
+            + "\n",
     );
 
     if solver.is_completed() {
@@ -242,6 +249,26 @@ fn generate_testcase(filename: String, mut test_config: RegressionTest) {
         std::fs::create_dir_all(parent_folder).unwrap();
     }
     std::fs::write(filename, toml::to_string(&test_config).unwrap()).unwrap();
+}
+
+fn default_techniques_str() -> Vec<String> {
+    vec![
+        "naked_single".to_string(),
+        "hidden_single".to_string(),
+        "locked_candidates".to_string(),
+        "hidden_subset".to_string(),
+        "naked_subset".to_string(),
+        "two_string_kite".to_string(),
+        "skyscraper".to_string(),
+        "rectangle_elimination".to_string(),
+        "w_wing".to_string(),
+        "xy_wing".to_string(),
+        "xyz_wing".to_string(),
+        "basic_fish".to_string(),
+        "finned_fish".to_string(),
+        "franken_fish".to_string(),
+        "mutant_fish".to_string(),
+    ]
 }
 
 #[test]
@@ -289,18 +316,7 @@ fn generate_regression() {
     for (idx, sudoku) in sudokus.trim().lines().enumerate() {
         println!("Analyzing {}", idx + 1);
         let test_config = RegressionTest {
-            techniques: vec![
-                "full_house".to_string(),
-                "naked_single".to_string(),
-                "hidden_single".to_string(),
-                "locked_candidates".to_string(),
-                "hidden_subset".to_string(),
-                "naked_subset".to_string(),
-                "basic_fish".to_string(),
-                "finned_fish".to_string(),
-                "franken_fish".to_string(),
-                "mutant_fish".to_string(),
-            ],
+            techniques: default_techniques_str(),
             board: Board {
                 initial_values: Some(sudoku.to_string()),
                 initial_candidates: None,
@@ -321,19 +337,7 @@ fn analyze_techniques() {
     for (idx, sudoku) in sudokus.trim().lines().enumerate() {
         println!("Analyzing {}", idx + 1);
         let test_config = RegressionTest {
-            techniques: vec![
-                "naked_single".to_string(),
-                "hidden_single".to_string(),
-                "locked_candidates".to_string(),
-                "hidden_subset".to_string(),
-                "naked_subset".to_string(),
-                "basic_fish".to_string(),
-                "finned_fish".to_string(),
-                "franken_fish".to_string(),
-                "two_string_kite".to_string(),
-                "skyscraper".to_string(),
-                "rectangle_elimination".to_string(),
-            ],
+            techniques: default_techniques_str(),
             board: Board {
                 initial_values: Some(sudoku.to_string()),
                 initial_candidates: None,

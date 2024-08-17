@@ -1,12 +1,12 @@
-use arrayvec::ArrayVec;
-use itertools::Itertools;
-
 use crate::sudoku::{CellIndex, Sudoku};
 
 use std::cell::OnceCell;
 use std::iter::{Copied, FromIterator};
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Deref, DerefMut, Sub, SubAssign};
 use std::usize;
+
+use arrayvec::ArrayVec;
+use itertools::Itertools;
 
 #[derive(Debug, Clone)]
 pub struct CellSet {
@@ -29,16 +29,6 @@ impl CellSet {
         }
     }
 
-    pub fn from_cells(cell_positions: Vec<CellIndex>) -> Self {
-        let mut set = Self::new();
-        for cell in &cell_positions {
-            set.add(*cell);
-        }
-        let array = ArrayVec::from_iter(cell_positions);
-        set.cells = array.into();
-        set
-    }
-
     pub fn is_empty(&self) -> bool {
         self.bitset == 0
     }
@@ -56,7 +46,7 @@ impl CellSet {
         (self.bitset & (1 << cell)) != 0
     }
 
-    pub fn delete(&mut self, cell: CellIndex) {
+    pub fn remove(&mut self, cell: CellIndex) {
         self.cells.take();
         self.bitset &= !(1 << cell);
     }
@@ -112,6 +102,22 @@ impl CellSet {
 
     pub fn to_string(&self, sudoku: &Sudoku) -> String {
         self.iter().map(|cell| sudoku.get_cell_name(cell)).join(",")
+    }
+}
+
+impl FromIterator<CellIndex> for CellSet {
+    fn from_iter<T: IntoIterator<Item = CellIndex>>(iter: T) -> Self {
+        let mut set = Self::new();
+        let mut array = ArrayVec::new();
+        for v in iter {
+            if set.has(v) {
+                continue;
+            }
+            array.push(v);
+            set.add(v);
+        }
+        set.cells = array.into();
+        set
     }
 }
 
@@ -279,7 +285,7 @@ mod tests {
         set.add(1);
         assert_eq!(set.size(), 2);
 
-        set.delete(0);
+        set.remove(0);
         assert_eq!(set.size(), 1);
 
         set.clear();

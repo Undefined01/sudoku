@@ -1,6 +1,6 @@
-use crate::sudoku::{CellValue, Step, StepKind, StepRule};
+use crate::solver::{Step, StepKind, SudokuSolver, Technique};
+use crate::sudoku::CellValue;
 use crate::utils::{CellSet, NamedCellSet};
-use crate::SudokuSolver;
 
 use itertools::Itertools;
 
@@ -12,7 +12,7 @@ pub fn check_is_fish(
     base_cells: &CellSet,
     cover_cells: &CellSet,
     value: CellValue,
-    rule: StepRule,
+    rule: Technique,
 ) -> Option<Step> {
     let fins = base_cells - cover_cells;
     let mut eliminated_cells = cover_cells - base_cells;
@@ -20,7 +20,7 @@ pub fn check_is_fish(
         return None;
     }
 
-    let allow_fins = rule != StepRule::BasicFish;
+    let allow_fins = rule != Technique::BasicFish;
     if !allow_fins && !fins.is_empty() {
         return None;
     }

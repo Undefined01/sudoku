@@ -1,8 +1,8 @@
 use super::fish_utils::check_is_fish;
 use crate::solver::return_if_some;
-use crate::sudoku::{CellValue, Step, StepRule};
+use crate::solver::{Step, SudokuSolver, Technique};
+use crate::sudoku::CellValue;
 use crate::utils::{comb, CellSet, NamedCellSet};
-use crate::SudokuSolver;
 
 use std::iter::FromIterator;
 
@@ -78,7 +78,7 @@ fn search_franken_fish_with(
                     &row_block_cells,
                     &col_cells,
                     value,
-                    StepRule::FrankenFish,
+                    Technique::FrankenFish,
                 ));
                 return_if_some!(check_is_fish(
                     sudoku,
@@ -87,7 +87,7 @@ fn search_franken_fish_with(
                     &col_cells,
                     &row_block_cells,
                     value,
-                    StepRule::FrankenFish,
+                    Technique::FrankenFish,
                 ));
             }
         }

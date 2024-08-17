@@ -1,8 +1,8 @@
 use super::fish_utils::check_is_fish;
 use crate::solver::return_if_some;
-use crate::sudoku::{CellValue, Step, StepRule};
+use crate::solver::{Step, SudokuSolver, Technique};
+use crate::sudoku::CellValue;
 use crate::utils::{comb, CellSet};
-use crate::SudokuSolver;
 
 use std::iter::FromIterator;
 
@@ -14,11 +14,11 @@ pub fn search_simple_fish(
     sudoku: &SudokuSolver,
     size: usize,
     value: CellValue,
-    rule: StepRule,
+    rule: Technique,
 ) -> Option<Step> {
     debug_assert!(size >= 2 && size <= 4);
     debug_assert!(value >= 1 && value <= 9);
-    debug_assert!(rule == StepRule::BasicFish || rule == StepRule::FinnedFish);
+    debug_assert!(rule == Technique::BasicFish || rule == Technique::FinnedFish);
 
     let rows_in_size = ArrayVec::<_, 9>::from_iter(
         sudoku

@@ -1,8 +1,8 @@
 use super::fish_utils::check_is_fish;
 use crate::solver::return_if_some;
-use crate::sudoku::{CellValue, Step, StepRule};
+use crate::solver::{Step, SudokuSolver, Technique};
+use crate::sudoku::CellValue;
 use crate::utils::{combinations, CellSet, CombinationOptions};
-use crate::SudokuSolver;
 
 use std::cell::UnsafeCell;
 use std::iter::FromIterator;
@@ -99,7 +99,7 @@ pub fn search_mutant_fish(sudoku: &SudokuSolver, size: usize, value: CellValue) 
                 &row_block_cells,
                 &col_block_cells,
                 value,
-                StepRule::MutantFish,
+                Technique::MutantFish,
             ));
             return_if_some!(check_is_fish(
                 sudoku,
@@ -108,7 +108,7 @@ pub fn search_mutant_fish(sudoku: &SudokuSolver, size: usize, value: CellValue) 
                 &col_block_cells,
                 &row_block_cells,
                 value,
-                StepRule::MutantFish,
+                Technique::MutantFish,
             ));
         }
     }
