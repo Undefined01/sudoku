@@ -1,12 +1,14 @@
-use crate::solver::{Step, SudokuSolver, Technique};
+use crate::solver::{SolutionRecorder, SudokuSolver, Technique};
 
-pub fn solve_full_house(sudoku: &SudokuSolver) -> Option<Step> {
+use super::return_in_fast_mode;
+
+pub fn solve_full_house(sudoku: &SudokuSolver, solution: &mut SolutionRecorder) {
     for house in sudoku.all_constraints().iter() {
         let unfilled_cells = house & sudoku.unfilled_cells();
         if unfilled_cells.size() == 1 {
             let unfilled_cell = unfilled_cells.iter().next().unwrap();
             let missing_value = sudoku.candidates(unfilled_cell).iter().next().unwrap();
-            return Some(Step::new_value_set(
+            solution.add_value_set(
                 Technique::FullHouse,
                 format!(
                     "{} is the only missing cell in {}",
@@ -15,18 +17,18 @@ pub fn solve_full_house(sudoku: &SudokuSolver) -> Option<Step> {
                 ),
                 unfilled_cell,
                 missing_value,
-            ));
+            );
+            return_in_fast_mode!(solution);
         }
     }
-    None
 }
 
-pub fn solve_naked_single(sudoku: &SudokuSolver) -> Option<Step> {
+pub fn solve_naked_single(sudoku: &SudokuSolver, solution: &mut SolutionRecorder) {
     for house in sudoku.all_constraints.iter() {
         for cell in house.iter() {
             if sudoku.candidates(cell).size() == 1 {
                 let value = sudoku.candidates(cell).iter().next().unwrap();
-                return Some(Step::new_value_set(
+                solution.add_value_set(
                     Technique::NakedSingle,
                     format!(
                         "{} is the only possible value to fill {}",
@@ -35,20 +37,23 @@ pub fn solve_naked_single(sudoku: &SudokuSolver) -> Option<Step> {
                     ),
                     cell,
                     value,
-                ));
+                );
+                return_in_fast_mode!(solution);
             }
         }
     }
-    None
 }
 
-pub fn solve_hidden_single(sudoku: &SudokuSolver) -> Option<Step> {
+pub fn solve_hidden_single(sudoku: &SudokuSolver, solution: &mut SolutionRecorder) {
     for house in sudoku.all_constraints.iter() {
+        if (sudoku.unfilled_cells() & house).is_empty() {
+            continue;
+        }
         for value in 1..=9 {
             let possible_cells = sudoku.get_possible_cells_for_house_and_value(house, value);
             if possible_cells.size() == 1 {
                 let target_cell = possible_cells.iter().next().unwrap();
-                return Some(Step::new_value_set(
+                solution.add_value_set(
                     Technique::HiddenSingle,
                     format!(
                         "in {}, {} is the only possible cell that can be {}",
@@ -58,9 +63,9 @@ pub fn solve_hidden_single(sudoku: &SudokuSolver) -> Option<Step> {
                     ),
                     target_cell,
                     value,
-                ));
+                );
+                return_in_fast_mode!(solution);
             }
         }
     }
-    None
 }

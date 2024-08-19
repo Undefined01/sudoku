@@ -1,13 +1,11 @@
-use crate::solver::{Step, StepKind, SudokuSolver, Technique};
+use crate::solver::{return_in_fast_mode, SolutionRecorder, SudokuSolver, Technique};
 use crate::utils::{comb, CellSet, ValueSet};
 
 use arrayvec::ArrayVec;
 use itertools::Itertools;
 
 // 在一个 House 中，若任意 n 个数字只可能出现在相同 n 个（或更少）单元格中，则这 n 个单元格中不可能出现其他数字
-pub fn solve_hidden_subset(sudoku: &SudokuSolver) -> Option<Step> {
-    let mut step = Step::new(StepKind::CandidateEliminated, Technique::HiddenSubset);
-
+pub fn solve_hidden_subset(sudoku: &SudokuSolver, solution: &mut SolutionRecorder) {
     for house in sudoku.all_constraints.iter() {
         let mut possible_cells_in_houses = vec![];
         for value in 1..=9 {
@@ -33,39 +31,37 @@ pub fn solve_hidden_subset(sudoku: &SudokuSolver) -> Option<Step> {
                 let cell_union = CellSet::union_multiple(subset.iter().map(|(_, cells)| &***cells));
                 let values_in_subset = ValueSet::from_iter(subset.iter().map(|(value, _)| *value));
 
-                if cell_union.size() <= size {
-                    for cell in cell_union.iter() {
-                        for value in 1..=9 {
-                            if !values_in_subset.has(value) && sudoku.can_fill(cell, value) {
-                                step.add(
-                                    format!(
-                                        "in {}, {} only appears in {}",
-                                        house.name(),
-                                        values_in_subset.iter().join(","),
-                                        sudoku.get_cellset_string(&cell_union),
-                                    ),
-                                    cell,
-                                    value,
-                                );
-                            }
+                if cell_union.size() > size {
+                    continue;
+                }
+
+                for cell in cell_union.iter() {
+                    for value in 1..=9 {
+                        if !values_in_subset.has(value) && sudoku.can_fill(cell, value) {
+                            solution.add_elimination(
+                                Technique::HiddenSubset,
+                                format!(
+                                    "in {}, {} only appears in {}",
+                                    house.name(),
+                                    values_in_subset.iter().join(","),
+                                    sudoku.get_cellset_string(&cell_union),
+                                ),
+                                cell,
+                                value,
+                            );
                         }
                     }
-                    if !step.is_empty() {
-                        return Some(step);
-                    }
                 }
+                return_in_fast_mode!(solution);
             }
         }
     }
-    None
 }
 
 // 当一个 House 中的 n 个单元格只包含相同的 n 个（或更少）数字时，这 n 个数字不可能出现在这个 House 中的其他单元格中
-pub fn solve_naked_subset(sudoku: &SudokuSolver) -> Option<Step> {
+pub fn solve_naked_subset(sudoku: &SudokuSolver, solution: &mut SolutionRecorder) {
     for house in sudoku.all_constraints.iter() {
         for size in 2..=4 {
-            let mut step = Step::new(StepKind::CandidateEliminated, Technique::NakedSubset);
-
             for subset in house
                 .iter()
                 .filter(|&cell| {
@@ -84,13 +80,18 @@ pub fn solve_naked_subset(sudoku: &SudokuSolver) -> Option<Step> {
                     continue;
                 }
 
+                if (&**house - &cells_in_subset).is_empty() {
+                    continue;
+                }
+
                 for cell in house.iter() {
                     if cells_in_subset.has(cell) {
                         continue;
                     }
                     for value in value_union.iter().sorted() {
                         if sudoku.can_fill(cell, value) {
-                            step.add(
+                            solution.add_elimination(
+                                Technique::NakedSubset,
                                 format!(
                                     "in {}, {} only contains {}",
                                     house.name(),
@@ -103,12 +104,8 @@ pub fn solve_naked_subset(sudoku: &SudokuSolver) -> Option<Step> {
                         }
                     }
                 }
-
-                if !step.is_empty() {
-                    return Some(step);
-                }
+                return_in_fast_mode!(solution);
             }
         }
     }
-    None
 }

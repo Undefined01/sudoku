@@ -1,6 +1,6 @@
 use super::fish_utils::check_is_fish;
-use crate::solver::return_if_some;
-use crate::solver::{Step, SudokuSolver, Technique};
+use crate::solver::return_in_fast_mode;
+use crate::solver::{SolutionRecorder, SudokuSolver, Technique};
 use crate::sudoku::CellValue;
 use crate::utils::{comb, CellSet};
 
@@ -12,10 +12,11 @@ use itertools::Itertools;
 /// Search for simple fish in the sudoku.
 pub fn search_simple_fish(
     sudoku: &SudokuSolver,
+    solution: &mut SolutionRecorder,
     size: usize,
     value: CellValue,
     rule: Technique,
-) -> Option<Step> {
+) {
     debug_assert!(size >= 2 && size <= 4);
     debug_assert!(value >= 1 && value <= 9);
     debug_assert!(rule == Technique::BasicFish || rule == Technique::FinnedFish);
@@ -50,25 +51,28 @@ pub fn search_simple_fish(
 
     for (row_set, row_cells) in &row_sets {
         for (col_set, col_cells) in &col_sets {
-            return_if_some!(check_is_fish(
+            check_is_fish(
                 sudoku,
+                solution,
                 row_set,
                 col_set,
                 row_cells,
                 col_cells,
                 value,
                 rule.clone(),
-            ));
-            return_if_some!(check_is_fish(
+            );
+            return_in_fast_mode!(solution);
+            check_is_fish(
                 sudoku,
+                solution,
                 col_set,
                 row_set,
                 col_cells,
                 row_cells,
                 value,
                 rule.clone(),
-            ));
+            );
+            return_in_fast_mode!(solution);
         }
     }
-    None
 }

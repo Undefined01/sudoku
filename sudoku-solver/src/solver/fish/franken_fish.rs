@@ -1,6 +1,6 @@
 use super::fish_utils::check_is_fish;
-use crate::solver::return_if_some;
-use crate::solver::{Step, SudokuSolver, Technique};
+use crate::solver::return_in_fast_mode;
+use crate::solver::{SolutionRecorder, SudokuSolver, Technique};
 use crate::sudoku::CellValue;
 use crate::utils::{comb, CellSet, NamedCellSet};
 
@@ -9,7 +9,12 @@ use std::iter::FromIterator;
 use arrayvec::ArrayVec;
 use itertools::Itertools;
 
-pub fn search_franken_fish(sudoku: &SudokuSolver, size: usize, value: CellValue) -> Option<Step> {
+pub fn search_franken_fish(
+    sudoku: &SudokuSolver,
+    solution: &mut SolutionRecorder,
+    size: usize,
+    value: CellValue,
+) {
     let rows = ArrayVec::<_, 9>::from_iter(
         sudoku
             .cells_in_rows()
@@ -32,24 +37,20 @@ pub fn search_franken_fish(sudoku: &SudokuSolver, size: usize, value: CellValue)
             .filter(|s| s.size() > 1),
     );
 
-    return_if_some!(search_franken_fish_with(
-        sudoku, size, value, &rows, &cols, &blocks
-    ));
-    return_if_some!(search_franken_fish_with(
-        sudoku, size, value, &cols, &rows, &blocks
-    ));
-
-    None
+    search_franken_fish_with(sudoku, solution, size, value, &rows, &cols, &blocks);
+    return_in_fast_mode!(solution);
+    search_franken_fish_with(sudoku, solution, size, value, &cols, &rows, &blocks);
 }
 
 fn search_franken_fish_with(
     sudoku: &SudokuSolver,
+    solution: &mut SolutionRecorder,
     size: usize,
     value: CellValue,
     rows: &ArrayVec<&NamedCellSet, 9>,
     cols: &ArrayVec<&NamedCellSet, 9>,
     blocks: &ArrayVec<&NamedCellSet, 9>,
-) -> Option<Step> {
+) {
     let col_sets = comb(&cols, size)
         .map(|col_set| {
             let col_cells = CellSet::union_multiple(col_set.iter().map(|c| &***c));
@@ -71,27 +72,29 @@ fn search_franken_fish_with(
             let row_block_cells =
                 &row_cells | &CellSet::union_multiple(block_set.iter().map(|r| &***r));
             for (col_set, col_cells) in &col_sets {
-                return_if_some!(check_is_fish(
+                check_is_fish(
                     sudoku,
+                    solution,
                     &row_block_set,
                     &col_set,
                     &row_block_cells,
                     &col_cells,
                     value,
                     Technique::FrankenFish,
-                ));
-                return_if_some!(check_is_fish(
+                );
+                return_in_fast_mode!(solution);
+                check_is_fish(
                     sudoku,
+                    solution,
                     &col_set,
                     &row_block_set,
                     &col_cells,
                     &row_block_cells,
                     value,
                     Technique::FrankenFish,
-                ));
+                );
+                return_in_fast_mode!(solution);
             }
         }
     }
-
-    None
 }

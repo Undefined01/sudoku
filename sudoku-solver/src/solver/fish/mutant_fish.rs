@@ -1,6 +1,6 @@
 use super::fish_utils::check_is_fish;
-use crate::solver::return_if_some;
-use crate::solver::{Step, SudokuSolver, Technique};
+use crate::solver::return_in_fast_mode;
+use crate::solver::{SolutionRecorder, SudokuSolver, Technique};
 use crate::sudoku::CellValue;
 use crate::utils::{combinations, CellSet, CombinationOptions};
 
@@ -10,7 +10,12 @@ use std::iter::FromIterator;
 use arrayvec::ArrayVec;
 use itertools::Itertools;
 
-pub fn search_mutant_fish(sudoku: &SudokuSolver, size: usize, value: CellValue) -> Option<Step> {
+pub fn search_mutant_fish(
+    sudoku: &SudokuSolver,
+    solution: &mut SolutionRecorder,
+    size: usize,
+    value: CellValue,
+) {
     let all_houses = ArrayVec::<_, 27>::from_iter(
         sudoku
             .all_constraints()
@@ -20,7 +25,7 @@ pub fn search_mutant_fish(sudoku: &SudokuSolver, size: usize, value: CellValue) 
     );
 
     if all_houses.is_empty() {
-        return None;
+        return;
     }
 
     let row_cells_stack = UnsafeCell::new((0u32, ArrayVec::<CellSet, 4>::new()));
@@ -92,26 +97,28 @@ pub fn search_mutant_fish(sudoku: &SudokuSolver, size: usize, value: CellValue) 
             let col_cells_stack = unsafe { &*col_cells_stack.get() };
             let col_block_cells = col_cells_stack.last().unwrap();
 
-            return_if_some!(check_is_fish(
+            check_is_fish(
                 sudoku,
+                solution,
                 row_block_set,
                 col_block_set,
                 &row_block_cells,
                 &col_block_cells,
                 value,
                 Technique::MutantFish,
-            ));
-            return_if_some!(check_is_fish(
+            );
+            return_in_fast_mode!(solution);
+            check_is_fish(
                 sudoku,
+                solution,
                 &col_block_set,
                 &row_block_set,
                 &col_block_cells,
                 &row_block_cells,
                 value,
                 Technique::MutantFish,
-            ));
+            );
+            return_in_fast_mode!(solution);
         }
     }
-
-    None
 }

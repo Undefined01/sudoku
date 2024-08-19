@@ -2,29 +2,25 @@ mod rectangle_elimination;
 mod skyscraper;
 mod two_string_kite;
 
-use crate::SudokuSolver;
+use crate::solver::{return_in_fast_mode, SolutionRecorder, SudokuSolver};
 
-use super::return_if_some;
-
-pub fn solve_two_string_kite(sudoku: &SudokuSolver) -> Option<crate::Step> {
+pub fn solve_two_string_kite(sudoku: &SudokuSolver, solution: &mut SolutionRecorder) {
     for value in 1..=9 {
-        return_if_some!(two_string_kite::search_two_string_kite(sudoku, value));
+        two_string_kite::search_two_string_kite(sudoku, solution, value);
+        return_in_fast_mode!(solution);
     }
-    None
 }
 
-pub fn solve_skyscraper(sudoku: &SudokuSolver) -> Option<crate::Step> {
+pub fn solve_skyscraper(sudoku: &SudokuSolver, solution: &mut SolutionRecorder) {
     for value in 1..=9 {
-        return_if_some!(skyscraper::search_skyscraper(sudoku, value));
+        skyscraper::search_skyscraper(sudoku, solution, value);
+        return_in_fast_mode!(solution);
     }
-    None
 }
 
-pub fn solve_rectangle_elimination(sudoku: &SudokuSolver) -> Option<crate::Step> {
+pub fn solve_rectangle_elimination(sudoku: &SudokuSolver, solution: &mut SolutionRecorder) {
     for value in 1..=9 {
-        return_if_some!(rectangle_elimination::search_rectangle_elimination(
-            sudoku, value
-        ));
+        rectangle_elimination::search_rectangle_elimination(sudoku, solution, value);
+        return_in_fast_mode!(solution);
     }
-    None
 }

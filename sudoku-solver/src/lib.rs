@@ -3,7 +3,7 @@ mod sudoku;
 pub mod utils;
 
 use solver::Techniques;
-pub use solver::{Step, SudokuSolver, Technique};
+pub use solver::{SolutionRecorder, SudokuSolver, Technique};
 pub use sudoku::Sudoku;
 
 use wasm_bindgen::prelude::*;
@@ -13,7 +13,7 @@ use wasm_bindgen::prelude::*;
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
 #[wasm_bindgen]
-pub fn sudoku_one_step(sudoku: &str) -> Option<Step> {
+pub fn sudoku_one_step(sudoku: &str) -> Option<SolutionRecorder> {
     let sudoku = Sudoku::from_values(sudoku);
     let solver = SudokuSolver::new(sudoku);
     let techniques = Techniques::new();

@@ -88,21 +88,24 @@ impl Sudoku {
         while let Some(ch) = chars.next() {
             if ch.is_digit(10) {
                 waiting_next_digit = true;
-                let digit = ch.to_digit(10).unwrap() as u8;
+                let digit = ch.to_digit(10).unwrap() as CellValue;
                 candidates[idx].add(digit);
-                possible_positions[digit as usize].add(idx as u8);
+                possible_positions[digit as usize].add(idx as CellIndex);
             } else if ch == '.' {
                 debug_assert!(!waiting_next_digit);
                 for digit in 1..=9 {
                     candidates[idx].add(digit);
-                    possible_positions[digit as usize].add(idx as u8);
+                    possible_positions[digit as usize].add(idx as CellIndex);
                 }
                 idx += 1;
             } else {
                 if waiting_next_digit {
                     assert!(candidates[idx].size() > 0);
                     if candidates[idx].size() == 1 {
-                        board[idx] = Some(candidates[idx].iter().next().unwrap());
+                        let value = candidates[idx].iter().next().unwrap();
+                        board[idx] = Some(value);
+                        candidates[idx].clear();
+                        possible_positions[value as usize].remove(idx as CellIndex);
                     }
                     idx += 1;
                 }

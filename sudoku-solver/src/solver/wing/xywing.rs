@@ -1,15 +1,15 @@
-use crate::solver::Step;
+use crate::solver::{return_in_fast_mode, SolutionRecorder};
 use crate::utils::CellSet;
 use crate::{SudokuSolver, Technique};
 
 use std::iter::FromIterator;
 
-pub fn solve_xy_wing(sudoku: &SudokuSolver) -> Option<Step> {
+pub fn solve_xy_wing(sudoku: &SudokuSolver, solution: &mut SolutionRecorder) {
     let bivalue_cells =
         CellSet::from_iter(sudoku.cells().filter(|&c| sudoku.candidates(c).size() == 2));
 
     if bivalue_cells.size() < 2 {
-        return None;
+        return;
     }
 
     let pivots = &bivalue_cells;
@@ -43,9 +43,9 @@ pub fn solve_xy_wing(sudoku: &SudokuSolver) -> Option<Step> {
                     continue;
                 }
 
-                let mut step = Step::new_elimination(Technique::XYWing);
                 for cell in eliminated.iter() {
-                    step.add(
+                    solution.add_elimination(
+                        Technique::XYWing,
                         format!(
                             "the pivot {} and the pincers {} and {} form an XY-Wing with xyz={}{}{}",
                             sudoku.get_cell_name(cell_xy),
@@ -59,20 +59,18 @@ pub fn solve_xy_wing(sudoku: &SudokuSolver) -> Option<Step> {
                         z,
                     );
                 }
-                return Some(step);
+                return_in_fast_mode!(solution);
             }
         }
     }
-
-    None
 }
 
-pub fn solve_xyz_wing(sudoku: &SudokuSolver) -> Option<Step> {
+pub fn solve_xyz_wing(sudoku: &SudokuSolver, solution: &mut SolutionRecorder) {
     let bivalue_cells =
         CellSet::from_iter(sudoku.cells().filter(|&c| sudoku.candidates(c).size() == 2));
 
     if bivalue_cells.size() < 2 {
-        return None;
+        return;
     }
 
     let pivots = CellSet::from_iter(sudoku.cells().filter(|&c| sudoku.candidates(c).size() == 3));
@@ -107,9 +105,9 @@ pub fn solve_xyz_wing(sudoku: &SudokuSolver) -> Option<Step> {
                     continue;
                 }
 
-                let mut step = Step::new_elimination(Technique::XYZWing);
                 for cell in eliminated.iter() {
-                    step.add(
+                    solution.add_elimination(
+                        Technique::XYZWing,
                         format!(
                             "the pivot {} and the pincers {} and {} form an XY-Wing with xyz={}{}{}",
                             sudoku.get_cell_name(cell_xy),
@@ -123,10 +121,8 @@ pub fn solve_xyz_wing(sudoku: &SudokuSolver) -> Option<Step> {
                         z_value,
                     );
                 }
-                return Some(step);
+                return_in_fast_mode!(solution);
             }
         }
     }
-
-    None
 }

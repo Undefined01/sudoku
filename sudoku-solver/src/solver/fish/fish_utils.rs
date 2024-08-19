@@ -1,4 +1,4 @@
-use crate::solver::{Step, StepKind, SudokuSolver, Technique};
+use crate::solver::{SolutionRecorder, SudokuSolver, Technique};
 use crate::sudoku::CellValue;
 use crate::utils::{CellSet, NamedCellSet};
 
@@ -7,31 +7,31 @@ use itertools::Itertools;
 #[inline(always)]
 pub fn check_is_fish(
     sudoku: &SudokuSolver,
+    solution: &mut SolutionRecorder,
     base_set: &[&NamedCellSet],
     cover_set: &[&NamedCellSet],
     base_cells: &CellSet,
     cover_cells: &CellSet,
     value: CellValue,
     rule: Technique,
-) -> Option<Step> {
+) {
     let fins = base_cells - cover_cells;
     let mut eliminated_cells = cover_cells - base_cells;
     if eliminated_cells.is_empty() {
-        return None;
+        return;
     }
 
     let allow_fins = rule != Technique::BasicFish;
     if !allow_fins && !fins.is_empty() {
-        return None;
+        return;
     }
     for fin in fins.iter() {
         eliminated_cells &= &sudoku.house_union_of_cell[fin as usize];
     }
     if eliminated_cells.is_empty() {
-        return None;
+        return;
     }
 
-    let mut step = Step::new(StepKind::CandidateEliminated, rule.clone());
     for cell in eliminated_cells.iter() {
         let reason = if fins.is_empty() {
             format!(
@@ -49,7 +49,6 @@ pub fn check_is_fish(
                 sudoku.get_cellset_string(&fins),
             )
         };
-        step.add(reason, cell, value);
+        solution.add_elimination(rule.clone(), reason, cell, value);
     }
-    return Some(step);
 }

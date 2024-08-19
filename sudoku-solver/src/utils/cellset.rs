@@ -2,7 +2,7 @@ use crate::sudoku::{CellIndex, Sudoku};
 
 use std::cell::OnceCell;
 use std::iter::{Copied, FromIterator};
-use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Deref, DerefMut, Sub, SubAssign};
+use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Deref, DerefMut, Index, Sub, SubAssign};
 use std::usize;
 
 use arrayvec::ArrayVec;
@@ -77,31 +77,40 @@ impl CellSet {
         intersection
     }
 
-    pub fn iter(&self) -> Copied<std::slice::Iter<CellIndex>> {
-        self.cells
-            .get_or_init(|| {
-                let mut cells = ArrayVec::new();
-                if !self.is_empty() {
-                    for idx in (0..81).step_by(9) {
-                        let bits = ((self.bitset >> idx) & 0x1FF) as usize;
-                        if bits == 0 {
-                            continue;
-                        }
-                        for i in 0..9 {
-                            if (bits & (1 << i)) != 0 {
-                                cells.push(idx + i);
-                            }
+    pub fn values(&self) -> &[CellIndex] {
+        self.cells.get_or_init(|| {
+            let mut cells = ArrayVec::new();
+            if !self.is_empty() {
+                for idx in (0..81).step_by(9) {
+                    let bits = ((self.bitset >> idx) & 0x1FF) as usize;
+                    if bits == 0 {
+                        continue;
+                    }
+                    for i in 0..9 {
+                        if (bits & (1 << i)) != 0 {
+                            cells.push(idx + i);
                         }
                     }
                 }
-                cells
-            })
-            .iter()
-            .copied()
+            }
+            cells
+        })
+    }
+
+    pub fn iter(&self) -> Copied<std::slice::Iter<CellIndex>> {
+        self.values().iter().copied()
     }
 
     pub fn to_string(&self, sudoku: &Sudoku) -> String {
         self.iter().map(|cell| sudoku.get_cell_name(cell)).join(",")
+    }
+}
+
+impl Index<usize> for &CellSet {
+    type Output = CellIndex;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.values()[index]
     }
 }
 
