@@ -1,5 +1,4 @@
 techniques = [
-    "full_house",
     "naked_single",
     "hidden_single",
     "locked_candidates",
@@ -7,8 +6,12 @@ techniques = [
     "hidden_subset",
     "basic_fish",
     "finned_fish",
-    "franken_fish",
-    "mutant_fish"
+
+    "w_wing",
+    "xy_wing",
+    "xyz_wing",
+
+    "forced_chain",
 ]
 
 [board]

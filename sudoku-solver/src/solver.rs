@@ -718,7 +718,7 @@ pub enum Technique {
     XYZWing,
 
     // Chain
-    Chain,
+    ForcedChain,
 }
 
 impl Technique {
@@ -740,7 +740,7 @@ impl Technique {
             Technique::WWing => wing::solve_w_wing,
             Technique::XYWing => wing::solve_xy_wing,
             Technique::XYZWing => wing::solve_xyz_wing,
-            Technique::Chain => chain::solve_chain,
+            Technique::ForcedChain => chain::solve_forced_chain,
         }
     }
 }
@@ -786,7 +786,8 @@ impl<S: AsRef<str> + Display> From<S> for Technique {
             "XYZWing" => Technique::XYZWing,
             "xyz_wing" => Technique::XYZWing,
 
-            "chain" => Technique::Chain,
+            "ForcedChain" => Technique::ForcedChain,
+            "forced_chain" => Technique::ForcedChain,
 
             _ => panic!("Unknown technique: {}", name),
         }

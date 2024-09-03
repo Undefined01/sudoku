@@ -2,7 +2,7 @@ use std::{collections::HashMap, time::Duration};
 
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
-use sudoku_solver::{solver::Techniques, Sudoku, SudokuSolver, Technique};
+use sudoku_solver::{solver::Techniques, SolutionRecorder, Sudoku, SudokuSolver, Technique};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Board {
@@ -74,7 +74,9 @@ fn run_testcase(test_config: RegressionTest) {
     let mut steps = vec![];
     loop {
         let mut step_found = false;
+        println!("{}", solver.sudoku().to_candidate_string());
         if let Some(step) = solver.solve_one_step(&techniques) {
+            println!("{}", step.to_string(solver.sudoku()));
             step_found = true;
             solver.apply_step(&step);
             steps.push(step);
@@ -130,14 +132,14 @@ fn analyze_testcase(test_config: RegressionTest, statistics: &mut HashMap<String
         .count()
         - 81;
 
-    let mut steps = vec![];
     loop {
         let mut step_found = false;
         let mut new_steps = vec![];
         for name in &test_config.techniques {
             let technique = Technique::from(name.as_str()).solver_fn();
             let start_time = std::time::Instant::now();
-            let step = technique(&solver);
+            let mut solution = SolutionRecorder::new();
+            technique(&solver, &mut solution);
             let elapsed_time = start_time.elapsed();
 
             let statistic = statistics.entry(name.clone()).or_insert(Statistic {
@@ -151,13 +153,12 @@ fn analyze_testcase(test_config: RegressionTest, statistics: &mut HashMap<String
             statistic.total_count += 1;
             statistic.total_time += elapsed_time;
 
-            if let Some(step) = step {
+            if solution.has_new_step() {
                 statistic.success_count += 1;
                 statistic.success_time += elapsed_time;
 
                 step_found = true;
-                steps.push(step.clone());
-                new_steps.push((name, elapsed_time, step));
+                new_steps.push((name, elapsed_time, solution));
             }
         }
         if !step_found {
@@ -167,7 +168,20 @@ fn analyze_testcase(test_config: RegressionTest, statistics: &mut HashMap<String
         let fastest_time = new_steps.iter().map(|(_, time, _)| time).min().unwrap();
         let fastest_threshold = fastest_time.mul_f64(1.1);
         for (name, time, step) in new_steps {
+            let start_time = std::time::Instant::now();
             solver.apply_step(&step);
+            let elapsed_time = start_time.elapsed();
+            let statistic = statistics.entry("apply".to_string()).or_insert(Statistic {
+                total_count: 0,
+                success_count: 0,
+                fastest_count: 0,
+                total_time: std::time::Duration::new(0, 0),
+                success_time: std::time::Duration::new(0, 0),
+                fastest_time: std::time::Duration::new(0, 0),
+            });
+            statistic.total_count += 1;
+            statistic.total_time += elapsed_time;
+
             if time <= fastest_threshold {
                 statistics.get_mut(name).unwrap().fastest_count += 1;
                 statistics.get_mut(name).unwrap().fastest_time += time;
@@ -251,6 +265,34 @@ fn generate_testcase(filename: String, mut test_config: RegressionTest) {
     std::fs::write(filename, toml::to_string(&test_config).unwrap()).unwrap();
 }
 
+fn all_techniques_str() -> Vec<String> {
+    vec![
+        "full_house".to_string(),
+        "naked_single".to_string(),
+        "hidden_single".to_string(),
+
+        "locked_candidates".to_string(),
+
+        "hidden_subset".to_string(),
+        "naked_subset".to_string(),
+
+        "two_string_kite".to_string(),
+        "skyscraper".to_string(),
+        "rectangle_elimination".to_string(),
+
+        "w_wing".to_string(),
+        "xy_wing".to_string(),
+        "xyz_wing".to_string(),
+
+        "basic_fish".to_string(),
+        "finned_fish".to_string(),
+        "franken_fish".to_string(),
+        "mutant_fish".to_string(),
+
+        "forced_chain".to_string(),
+    ]
+}
+
 fn default_techniques_str() -> Vec<String> {
     vec![
         "naked_single".to_string(),
@@ -258,16 +300,21 @@ fn default_techniques_str() -> Vec<String> {
         "locked_candidates".to_string(),
         "hidden_subset".to_string(),
         "naked_subset".to_string(),
-        "two_string_kite".to_string(),
+
         "skyscraper".to_string(),
+        "two_string_kite".to_string(),
         "rectangle_elimination".to_string(),
+
         "w_wing".to_string(),
         "xy_wing".to_string(),
         "xyz_wing".to_string(),
+
         "basic_fish".to_string(),
         "finned_fish".to_string(),
         "franken_fish".to_string(),
         "mutant_fish".to_string(),
+
+        "forced_chain".to_string(),
     ]
 }
 
@@ -337,7 +384,7 @@ fn analyze_techniques() {
     for (idx, sudoku) in sudokus.trim().lines().enumerate() {
         println!("Analyzing {}", idx + 1);
         let test_config = RegressionTest {
-            techniques: default_techniques_str(),
+            techniques: all_techniques_str(),
             board: Board {
                 initial_values: Some(sudoku.to_string()),
                 initial_candidates: None,
@@ -348,7 +395,11 @@ fn analyze_techniques() {
         analyze_testcase(test_config, &mut statictics);
     }
 
-    for (name, statistic) in statictics {
+    println!(
+        "{:^23}\t{:^5} / {:^5} / {:^5} count\t{:^8} / {:^8} / {:^8}",
+        "Technique", "fastest", "success", "total", "fastest", "success", "total time"
+    );
+    for (name, statistic) in all_techniques_str().iter().chain(Some(&"apply".to_string())).map(|x| (x, &statictics[x])) {
         let avg_fastest_time = statistic
             .fastest_time
             .checked_div(statistic.fastest_count as u32)
@@ -362,7 +413,7 @@ fn analyze_techniques() {
             .checked_div(statistic.total_count as u32)
             .unwrap_or(Duration::new(0, 0));
         println!(
-            "{}:\t{}/{}/{}\t{:.2?}/{:.2?}/{:.2?}",
+            "{:^23}\t {:>5}  /  {:>5}  / {:>5}      \t{:>8.2?} / {:>8.2?} / {:>8.2?}",
             name,
             statistic.fastest_count,
             statistic.success_count,
