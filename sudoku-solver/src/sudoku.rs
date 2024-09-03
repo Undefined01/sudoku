@@ -7,6 +7,7 @@ pub type CellIndex = u8;
 pub type CellValue = u8;
 
 #[wasm_bindgen]
+#[derive(Debug, Clone)]
 pub struct Sudoku {
     board: Vec<Option<CellValue>>,
     // cell position -> possible values at that cell

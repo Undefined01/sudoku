@@ -41,6 +41,6 @@ Implemented solving techniques:
 
 ```
 cargo install wasm-pack
-wasm-pack build sudoku-solver --release --features wee_alloc
+wasm-pack build sudoku-solver --release
 npm run build
 ```

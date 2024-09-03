@@ -10,7 +10,7 @@ import {
 
 import { inject, ref } from "vue";
 import { Sudoku } from "@/models/sudoku";
-import { Sudoku as RustSudoku, SudokuSolver } from "sudoku-solver";
+import { Sudoku as RustSudoku, SudokuSolver, Techniques } from "sudoku-solver";
 
 const sudoku = inject<Sudoku>("sudoku")!;
 
@@ -49,24 +49,28 @@ const toggleValue = (value: number) => {
 type PadMode = "value" | "candidate" | "pencilMark" | "color";
 const mode = ref<PadMode>("value");
 
-let rustSudoku = RustSudoku.from_str(sudoku.toValueString());
-let solver = SudokuSolver.new(rustSudoku);
+let solver: SudokuSolver | undefined = undefined;
 const fillPencilMarks = () => {
-  rustSudoku = RustSudoku.from_str(sudoku.toValueString());
+  const rustSudoku = RustSudoku.from_values(sudoku.toValueString());
   solver = SudokuSolver.new(rustSudoku);
-  solver.initialize_candidates(rustSudoku);
-  const candidateStr = rustSudoku.to_candidate_string();
+  solver.initialize_candidates();
+  const candidateStr = solver.take_sudoku().to_candidate_string();
   sudoku.updateState(true, (state) => {
     state.fromCandidateString(candidateStr);
   });
 };
 const solveOneStep = () => {
+  if (solver === undefined) {
+    fillPencilMarks();
+  }
+  solver = solver as SudokuSolver;
   console.time("wasm solveOneStep");
-  const step = solver.solve_one_step(rustSudoku);
+  const step = solver.solve_one_step(Techniques.default_techniques());
   console.timeEnd("wasm solveOneStep");
+  const rustSudoku = solver.take_sudoku();
   if (step !== undefined) {
     console.log(step.to_string(rustSudoku));
-    solver.apply_step(rustSudoku, step);
+    solver.apply_step(step);
     const candidateStr = rustSudoku.to_candidate_string();
     sudoku.updateState(true, (state) => {
       state.fromCandidateString(candidateStr);
