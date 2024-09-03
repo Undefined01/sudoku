@@ -5,6 +5,7 @@ mod single;
 mod single_digit_patterns;
 mod subset;
 mod wing;
+mod guess;
 
 use crate::sudoku::{CellIndex, CellValue, Sudoku};
 use crate::utils::{CellSet, NamedCellSet, ValueSet};
@@ -404,6 +405,10 @@ impl SudokuSolver {
         }
     }
 
+    pub fn take_sudoku(&self) -> Sudoku {
+        self.sudoku.clone()
+    }
+
     pub fn get_invalid_positions(&self) -> Vec<CellIndex> {
         let mut invalid_positions = vec![];
         for house in self.all_constraints.iter() {
@@ -719,6 +724,8 @@ pub enum Technique {
 
     // Chain
     ForcedChain,
+
+    Guess,
 }
 
 impl Technique {
@@ -741,6 +748,7 @@ impl Technique {
             Technique::XYWing => wing::solve_xy_wing,
             Technique::XYZWing => wing::solve_xyz_wing,
             Technique::ForcedChain => chain::solve_forced_chain,
+            Technique::Guess => guess::solve_dancing_links,
         }
     }
 }
@@ -823,6 +831,21 @@ impl Techniques {
         let mut funcs: Vec<SolverFn> = vec![];
         for technique in techniques {
             funcs.push(technique.into().solver_fn());
+        }
+        Self(funcs)
+    }
+}
+
+#[wasm_bindgen]
+impl Techniques {
+    pub fn default_techniques() -> Self {
+        Self::new()
+    }
+
+    pub fn from_slice(techniques: Vec<Technique>) -> Self {
+        let mut funcs: Vec<SolverFn> = vec![];
+        for technique in techniques {
+            funcs.push(technique.solver_fn());
         }
         Self(funcs)
     }

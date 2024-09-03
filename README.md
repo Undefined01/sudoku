@@ -90,6 +90,6 @@ The table below provides a detailed analysis of each technique's performance. Th
 
 ```
 cargo install wasm-pack
-wasm-pack build sudoku-solver --release --features wee_alloc
+wasm-pack build sudoku-solver --release
 npm run build
 ```
