@@ -5,7 +5,7 @@ mod single;
 mod single_digit_patterns;
 mod subset;
 mod wing;
-mod guess;
+pub mod guess;
 
 use crate::sudoku::{CellIndex, CellValue, Sudoku};
 use crate::utils::{CellSet, NamedCellSet, ValueSet};
@@ -748,7 +748,7 @@ impl Technique {
             Technique::XYWing => wing::solve_xy_wing,
             Technique::XYZWing => wing::solve_xyz_wing,
             Technique::ForcedChain => chain::solve_forced_chain,
-            Technique::Guess => guess::solve_dancing_links,
+            Technique::Guess => guess::solve_guess,
         }
     }
 }
@@ -797,6 +797,9 @@ impl<S: AsRef<str> + Display> From<S> for Technique {
             "ForcedChain" => Technique::ForcedChain,
             "forced_chain" => Technique::ForcedChain,
 
+            "guess" => Technique::Guess,
+            "Guess" => Technique::Guess,
+
             _ => panic!("Unknown technique: {}", name),
         }
     }
@@ -823,6 +826,9 @@ impl Techniques {
             Technique::BasicFish,
             Technique::FinnedFish,
             Technique::FrankenFish,
+
+            Technique::ForcedChain,
+            Technique::Guess,
         ];
         Self::from(default_techniques.into_iter())
     }
