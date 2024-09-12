@@ -290,6 +290,8 @@ fn all_techniques_str() -> Vec<String> {
         "mutant_fish".to_string(),
 
         "forced_chain".to_string(),
+
+        "guess".to_string(),
     ]
 }
 

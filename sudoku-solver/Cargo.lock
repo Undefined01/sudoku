@@ -195,15 +195,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7a81dae078cea95a014a339291cec439d2f232ebe854a9d672b796c6afafa9b7"
 
 [[package]]
-name = "dancing-links"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "059a2b4dc46ba6b9df40255a2a6e0c970c3d4667314a01f969b16e4b06fca98e"
-dependencies = [
- "bumpalo",
-]
-
-[[package]]
 name = "either"
 version = "1.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -245,7 +236,6 @@ dependencies = [
  "bitset-core",
  "console_error_panic_hook",
  "criterion",
- "dancing-links",
  "itertools 0.13.0",
  "rustc-hash",
  "serde",
