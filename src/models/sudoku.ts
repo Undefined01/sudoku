@@ -63,7 +63,6 @@ export class SudokuCell {
     } else {
       this.candidates.add(candidate);
     }
-    console.log(this.candidates);
   }
 
   clearCandidates() {
@@ -158,6 +157,50 @@ export class SudokuState {
         }
       }
     }
+  }
+
+  fillFromCandidateString(candidateString: string) {
+    const candidatesRegex = /\d+/g;
+    const allCandidates = [];
+    while (true) {
+      const candidates = candidatesRegex.exec(candidateString);
+      if (!candidates) {
+        break;
+      }
+      allCandidates.push(candidates[0]);
+    }
+    if (allCandidates.length !== 81) {
+      throw new Error("Invalid candidate string");
+    }
+    for (let i = 0; i < allCandidates.length; i++) {
+      const cell = this.cells[i];
+      const candidates = allCandidates[i].split("").map(Number);
+      if (cell.isGiven) {
+        continue;
+      }
+      if (cell.value !== undefined) {
+        continue;
+      }
+      if (candidates.length === 1) {
+        cell.setValue(candidates[0]);
+      } else {
+        cell.pencilMarks.clear();
+        for (const candidate of candidates) {
+          cell.pencilMarks.add(candidate);
+        }
+      }
+    }
+  }
+
+  toCandidateString(): string {
+    return this.cells
+      .map((cell) => {
+        if (cell.isGiven) {
+          return cell.value;
+        }
+        return Array.from(cell.pencilMarks).join("");
+      })
+      .join(" ");
   }
 }
 

@@ -10,7 +10,7 @@ import {
 
 import { inject, ref } from "vue";
 import { Sudoku } from "@/models/sudoku";
-import { Sudoku as RustSudoku, SudokuSolver, Techniques } from "sudoku-solver";
+import { Sudoku as RustSudoku, SudokuSolver, Techniques, StepKind } from "sudoku-solver";
 
 const sudoku = inject<Sudoku>("sudoku")!;
 
@@ -50,13 +50,17 @@ type PadMode = "value" | "candidate" | "pencilMark" | "color";
 const mode = ref<PadMode>("value");
 
 let solver: SudokuSolver | undefined = undefined;
+const reloadSolver = () => {
+  const rustSudoku = RustSudoku.from_candidates(sudoku.state.toCandidateString());
+  solver = SudokuSolver.new(rustSudoku);
+}
 const fillPencilMarks = () => {
   const rustSudoku = RustSudoku.from_values(sudoku.toValueString());
   solver = SudokuSolver.new(rustSudoku);
   solver.initialize_candidates();
   const candidateStr = solver.take_sudoku().to_candidate_string();
   sudoku.updateState(true, (state) => {
-    state.fromCandidateString(candidateStr);
+    state.fillFromCandidateString(candidateStr);
   });
 };
 const solveOneStep = () => {
@@ -65,15 +69,24 @@ const solveOneStep = () => {
   }
   solver = solver as SudokuSolver;
   console.time("wasm solveOneStep");
-  const step = solver.solve_one_step(Techniques.default_techniques());
+  const action = solver.solve_one_step(Techniques.default_techniques());
   console.timeEnd("wasm solveOneStep");
-  const rustSudoku = solver.take_sudoku();
-  if (step !== undefined) {
-    console.log(step.to_string(rustSudoku));
-    solver.apply_step(step);
-    const candidateStr = rustSudoku.to_candidate_string();
+  if (action !== undefined) {
+    console.log(action.to_string(solver.take_sudoku()));
+    solver.apply_step(action);
     sudoku.updateState(true, (state) => {
-      state.fromCandidateString(candidateStr);
+      for (const step of action.steps) {
+        const cell = state.cells[step.cell_index];
+        if (step.kind === StepKind.ValueSet) {
+          cell.setValue(step.value);
+        } else if (step.kind === StepKind.CandidateEliminated) {
+          if (cell.value === undefined && cell.pencilMarks.has(step.value)) {
+            cell.pencilMarks.delete(step.value);
+          }
+        } else {
+          console.log("Unknown step kind", step.kind);
+        }
+      }
     });
   } else {
     console.log("No avaliable step");
@@ -350,11 +363,11 @@ const solveOneStep = () => {
       </svg>
     </v-btn>
 
-    <v-btn class="pad-button" @click="() => sudoku.undo()">
+    <v-btn class="pad-button" @click="() => { sudoku.undo(); reloadSolver(); }">
       <v-icon :icon="mdiUndo" />
     </v-btn>
 
-    <v-btn class="pad-button" @click="() => sudoku.redo()">
+    <v-btn class="pad-button" @click="() => { sudoku.redo(); reloadSolver(); }">
       <v-icon :icon="mdiRedo" />
     </v-btn>
 

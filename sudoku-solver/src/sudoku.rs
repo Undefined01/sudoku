@@ -113,6 +113,16 @@ impl Sudoku {
                 waiting_next_digit = false;
             }
         }
+        if waiting_next_digit {
+            assert!(candidates[idx].size() > 0);
+            if candidates[idx].size() == 1 {
+                let value = candidates[idx].iter().next().unwrap();
+                board[idx] = Some(value);
+                candidates[idx].clear();
+                possible_positions[value as usize].remove(idx as CellIndex);
+            }
+            idx += 1;
+        }
         Self {
             board,
             candidates,

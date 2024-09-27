@@ -91,9 +91,9 @@ export class CellSet {
     if (this.cells) {
       return this.cells;
     }
-    this.cells = [];
+    // this.cells = [];
+    const cells: Array<CellPosition> = [];
     const valuesForNumber32 = (
-      cells: Array<CellPosition>,
       n: number,
       shift: number,
     ) => {
@@ -104,21 +104,18 @@ export class CellSet {
       }
     };
     valuesForNumber32(
-      this.cells,
       Number(this.bitset & CellSet.bitset32Mask),
       0,
     );
     valuesForNumber32(
-      this.cells,
       Number((this.bitset >> CellSet.bitint32) & CellSet.bitset32Mask),
       32,
     );
     valuesForNumber32(
-      this.cells,
       Number((this.bitset >> CellSet.bitint64) & CellSet.bitset32Mask),
       64,
     );
-    return this.cells;
+    return cells;
   }
 
   forEach(callback: (cell: CellPosition) => void) {

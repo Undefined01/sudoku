@@ -472,7 +472,7 @@ pub fn solve_forced_chain(sudoku: &SudokuSolver, solution: &mut SolutionRecorder
                     solution.add_value_set(
                         Technique::ForcedChain,
                         format!(
-                            "Where ever the value of {} is in {}, {} must be {}\n{}",
+                            "Where ever the value {} is in {}, {} must be {}\n{}",
                             value,
                             house.name(),
                             sudoku.get_cell_name(assumption.cell),
@@ -487,7 +487,7 @@ pub fn solve_forced_chain(sudoku: &SudokuSolver, solution: &mut SolutionRecorder
                     solution.add_elimination(
                         Technique::ForcedChain,
                         format!(
-                            "Where ever the value of {} is in {}, {} cannot be {}\n{}",
+                            "Where ever the value {} is in {}, {} cannot be {}\n{}",
                             value,
                             house.name(),
                             sudoku.get_cell_name(assumption.cell),

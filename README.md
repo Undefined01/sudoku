@@ -91,5 +91,6 @@ The table below provides a detailed analysis of each technique's performance. Th
 ```
 cargo install wasm-pack
 wasm-pack build sudoku-solver --release
+# or `nix develop . --command wasm-pack build sudoku-solver --release` if you are using nix
 npm run build
 ```
