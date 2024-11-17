@@ -75,6 +75,9 @@ const fivePositionOnHavingCandidates = {
         dominant-baseline="central"
         :font-size="candidateFontSize"
         fill="blue"
+        stroke-width="3px"
+        stroke="#fff"
+        paint-order="stroke"
       >
         {{ [...cell.candidates].sort().join("") }}
       </text>
@@ -90,6 +93,9 @@ const fivePositionOnHavingCandidates = {
           dominant-baseline="central"
           :font-size="pencilMarkFontSize"
           fill="gray"
+          stroke-width="2px"
+          stroke="#fff"
+          paint-order="stroke"
         >
           {{ pencilMark }}
         </text>
@@ -104,6 +110,9 @@ const fivePositionOnHavingCandidates = {
           dominant-baseline="central"
           :font-size="pencilMarkFontSize"
           fill="gray"
+          stroke-width="2px"
+          stroke="#fff"
+          paint-order="stroke"
         >
           5
         </text>

@@ -116,11 +116,12 @@ function handleTouchMove(event: TouchEvent) {
   }
   const touch = event.touches[0];
   const element = document.elementFromPoint(touch.clientX, touch.clientY);
-  if (element === null || element.className !== "sudoku-cell") {
+  if (element === null || !element.classList.contains("sudoku-cell")) {
     return;
   }
   const row = parseInt(element.getAttribute("y")!) / 100;
   const column = parseInt(element.getAttribute("x")!) / 100;
+  console.log("touchmove", row, column);
   doMultiselect({ row, column, idx: row * columns + column }, event);
 }
 </script>

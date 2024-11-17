@@ -8,6 +8,7 @@ import SudokuHighlighter from "./SudokuHighlighter.vue";
 
 import { Sudoku } from "@/models/sudoku";
 import { defaultSettings, Settings } from "@/models/settings";
+import SudokuCellBackground from "./SudokuCellBackground.vue";
 
 const sudoku = inject<Sudoku>("sudoku")!;
 const { metadata } = sudoku;
@@ -19,8 +20,6 @@ const sudokuMargin = settings.appearance.sudoku.sudokuSvgMargin;
 onMounted(() => {
   document.addEventListener("keydown", function (event) {
     const key = event.code;
-
-    // console.log(event.key, event.code, event)
 
     if (sudoku.selectedCells.size === 0) {
       return;
@@ -37,10 +36,10 @@ onMounted(() => {
               state.getCell(cell).setValue(undefined);
             }
             if (noModifier || event.ctrlKey) {
-              state.getCell(cell).clearCandidates();
+              state.getCell(cell).candidates.clear();
             }
             if (noModifier || event.shiftKey) {
-              state.getCell(cell).clearPencilMarks();
+              state.getCell(cell).pencilMarks.clear();
             }
           });
         });
@@ -76,14 +75,10 @@ onMounted(() => {
             });
           }
           if (event.ctrlKey && !event.shiftKey && !event.altKey) {
-            state.selectedCells.values().forEach((cell) => {
-              state.getCell(cell).toggleCandidate(value);
-            });
+            state.toggleCandidate(state.selectedCells.values(), value);
           }
           if (!event.ctrlKey && event.shiftKey && !event.altKey) {
-            state.selectedCells.values().forEach((cell) => {
-              state.getCell(cell).togglePencilMark(value);
-            });
+            state.togglePencilMark(state.selectedCells.values(), value);
           }
         });
         break;
@@ -117,6 +112,8 @@ onMounted(() => {
     shape-rendering="geometricPrecision"
     pointer-events="none"
   >
+    <SudokuCellBackground />
+
     <SudokuHighlighter :highlighted-cells="() => sudoku.selectedCells" />
 
     <SudokuGrid :metadata="sudoku.metadata" />

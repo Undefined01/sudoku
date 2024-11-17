@@ -93,20 +93,14 @@ export class CellSet {
     }
     // this.cells = [];
     const cells: Array<CellPosition> = [];
-    const valuesForNumber32 = (
-      n: number,
-      shift: number,
-    ) => {
+    const valuesForNumber32 = (n: number, shift: number) => {
       for (let idx = 0; idx < 32; idx++) {
         if (n & (1 << idx)) {
           cells.push(CellSet.cells[idx + shift]);
         }
       }
     };
-    valuesForNumber32(
-      Number(this.bitset & CellSet.bitset32Mask),
-      0,
-    );
+    valuesForNumber32(Number(this.bitset & CellSet.bitset32Mask), 0);
     valuesForNumber32(
       Number((this.bitset >> CellSet.bitint32) & CellSet.bitset32Mask),
       32,

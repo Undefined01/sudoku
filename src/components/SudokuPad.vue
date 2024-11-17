@@ -8,52 +8,70 @@ import {
   mdiUndo,
 } from "@mdi/js";
 
-import { inject, ref } from "vue";
+import { inject, ref, computed } from "vue";
 import { Sudoku } from "@/models/sudoku";
-import { Sudoku as RustSudoku, SudokuSolver, Techniques, StepKind } from "sudoku-solver";
+import {
+  Sudoku as RustSudoku,
+  SudokuSolver,
+  Techniques,
+  StepKind,
+} from "sudoku-solver";
+import { PadMode } from "./SudokuPad/Pad";
+import PadButton from "./SudokuPad/PadButton.vue";
+import { Settings } from "@/models/settings";
 
 const sudoku = inject<Sudoku>("sudoku")!;
+const settings = inject<Settings>("settings")!;
+
+const mode = ref<PadMode>("value");
+
+const numberLayout = computed(() => {
+  if (settings.appearance.sudoku.useCellphoneLayoutForPadNumbers) {
+    return [
+      [1, 2, 3],
+      [4, 5, 6],
+      [7, 8, 9],
+    ];
+  } else {
+    return [
+      [7, 8, 9],
+      [4, 5, 6],
+      [1, 2, 3],
+    ];
+  }
+});
 
 const deleteSelected = () => {
   sudoku.updateState(true, (state) => {
-    state.selectedCells.values().forEach((cell) => {
-      if (mode.value === "value") {
+    if (mode.value === "value") {
+      state.selectedCells.values().forEach((cell) => {
         state.getCell(cell).setValue(undefined);
-      }
-      if (mode.value === "candidate") {
-        state.getCell(cell).clearCandidates();
-      }
-      if (mode.value === "pencilMark") {
-        state.getCell(cell).clearPencilMarks();
-      }
-    });
+        state.getCell(cell).candidates.clear();
+        state.getCell(cell).pencilMarks.clear();
+      });
+    } else if (mode.value === "candidate") {
+      state.selectedCells.values().forEach((cell) => {
+        state.getCell(cell).candidates.clear();
+      });
+    } else if (mode.value === "pencilMark") {
+      state.selectedCells.values().forEach((cell) => {
+        state.getCell(cell).pencilMarks.clear();
+      });
+    } else if (mode.value === "color") {
+      state.selectedCells.values().forEach((cell) => {
+        state.getCell(cell).colors.clear();
+      });
+    }
   });
 };
-
-const toggleValue = (value: number) => {
-  sudoku.updateState(true, (state) => {
-    state.selectedCells.values().forEach((cell) => {
-      if (mode.value === "value") {
-        state.getCell(cell).setValue(value);
-      }
-      if (mode.value === "candidate") {
-        state.getCell(cell).toggleCandidate(value);
-      }
-      if (mode.value === "pencilMark") {
-        state.getCell(cell).togglePencilMark(value);
-      }
-    });
-  });
-};
-
-type PadMode = "value" | "candidate" | "pencilMark" | "color";
-const mode = ref<PadMode>("value");
 
 let solver: SudokuSolver | undefined = undefined;
 const reloadSolver = () => {
-  const rustSudoku = RustSudoku.from_candidates(sudoku.state.toCandidateString());
+  const rustSudoku = RustSudoku.from_candidates(
+    sudoku.state.toCandidateString(),
+  );
   solver = SudokuSolver.new(rustSudoku);
-}
+};
 const fillPencilMarks = () => {
   const rustSudoku = RustSudoku.from_values(sudoku.toValueString());
   solver = SudokuSolver.new(rustSudoku);
@@ -106,73 +124,17 @@ const solveOneStep = () => {
       <v-icon :icon="mdiStrategy" />
       <v-tooltip activator="parent" location="bottom">求解下一步</v-tooltip>
     </v-btn>
-    <v-btn class="pad-button" @click="() => toggleValue(1)">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-        <text
-          font-size="16"
-          x="12"
-          y="12"
-          text-anchor="middle"
-          dominant-baseline="central"
-        >
-          1
-        </text>
-      </svg>
-    </v-btn>
-    <v-btn class="pad-button" @click="() => toggleValue(1)">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-        <text
-          font-size="16"
-          x="12"
-          y="12"
-          text-anchor="middle"
-          dominant-baseline="central"
-        >
-          1
-        </text>
-      </svg>
-    </v-btn>
+    <v-btn class="pad-button"> </v-btn>
+    <v-btn class="pad-button"> </v-btn>
 
-    <v-btn class="pad-button" @click="() => toggleValue(1)">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-        <text
-          font-size="16"
-          x="12"
-          y="12"
-          text-anchor="middle"
-          dominant-baseline="central"
-        >
-          1
-        </text>
-      </svg>
-    </v-btn>
-    <v-btn class="pad-button" @click="() => toggleValue(2)">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-        <text
-          font-size="16"
-          x="12"
-          y="12"
-          text-anchor="middle"
-          dominant-baseline="central"
-        >
-          2
-        </text>
-      </svg>
-    </v-btn>
-    <v-btn class="pad-button" @click="() => toggleValue(3)">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-        <text
-          font-size="16"
-          x="12"
-          y="12"
-          text-anchor="middle"
-          dominant-baseline="central"
-        >
-          3
-        </text>
-      </svg>
-    </v-btn>
+    <pad-button
+      v-for="idx in numberLayout[0]"
+      :key="idx"
+      :mode="mode"
+      :idx="idx"
+    />
 
+    <!-- Value Switch -->
     <v-btn
       class="pad-button"
       :active="mode === 'value'"
@@ -203,46 +165,14 @@ const solveOneStep = () => {
       </svg>
     </v-btn>
 
-    <v-btn class="pad-button" @click="() => toggleValue(4)">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-        <text
-          font-size="16"
-          x="12"
-          y="12"
-          text-anchor="middle"
-          dominant-baseline="central"
-        >
-          4
-        </text>
-      </svg>
-    </v-btn>
-    <v-btn class="pad-button" @click="() => toggleValue(5)">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-        <text
-          font-size="16"
-          x="12"
-          y="12"
-          text-anchor="middle"
-          dominant-baseline="central"
-        >
-          5
-        </text>
-      </svg>
-    </v-btn>
-    <v-btn class="pad-button" @click="() => toggleValue(6)">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-        <text
-          font-size="16"
-          x="12"
-          y="12"
-          text-anchor="middle"
-          dominant-baseline="central"
-        >
-          6
-        </text>
-      </svg>
-    </v-btn>
+    <pad-button
+      v-for="idx in numberLayout[1]"
+      :key="idx"
+      :mode="mode"
+      :idx="idx"
+    />
 
+    <!-- Pencil Mark Switch -->
     <v-btn
       class="pad-button"
       :active="mode === 'pencilMark'"
@@ -283,46 +213,14 @@ const solveOneStep = () => {
       </svg>
     </v-btn>
 
-    <v-btn class="pad-button" @click="() => toggleValue(7)">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-        <text
-          font-size="16"
-          x="12"
-          y="12"
-          text-anchor="middle"
-          dominant-baseline="central"
-        >
-          7
-        </text>
-      </svg>
-    </v-btn>
-    <v-btn class="pad-button" @click="() => toggleValue(8)">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-        <text
-          font-size="16"
-          x="12"
-          y="12"
-          text-anchor="middle"
-          dominant-baseline="central"
-        >
-          8
-        </text>
-      </svg>
-    </v-btn>
-    <v-btn class="pad-button" @click="() => toggleValue(9)">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-        <text
-          font-size="16"
-          x="12"
-          y="12"
-          text-anchor="middle"
-          dominant-baseline="central"
-        >
-          9
-        </text>
-      </svg>
-    </v-btn>
+    <pad-button
+      v-for="idx in numberLayout[2]"
+      :key="idx"
+      :mode="mode"
+      :idx="idx"
+    />
 
+    <!-- Candidate Switch -->
     <v-btn
       class="pad-button"
       :active="mode === 'candidate'"
@@ -363,11 +261,27 @@ const solveOneStep = () => {
       </svg>
     </v-btn>
 
-    <v-btn class="pad-button" @click="() => { sudoku.undo(); reloadSolver(); }">
+    <v-btn
+      class="pad-button"
+      @click="
+        () => {
+          sudoku.undo();
+          reloadSolver();
+        }
+      "
+    >
       <v-icon :icon="mdiUndo" />
     </v-btn>
 
-    <v-btn class="pad-button" @click="() => { sudoku.redo(); reloadSolver(); }">
+    <v-btn
+      class="pad-button"
+      @click="
+        () => {
+          sudoku.redo();
+          reloadSolver();
+        }
+      "
+    >
       <v-icon :icon="mdiRedo" />
     </v-btn>
 
@@ -415,6 +329,7 @@ const solveOneStep = () => {
   width: 100%;
   height: auto !important;
   aspect-ratio: 1 / 1;
+  min-width: auto;
 }
 
 .pad-button svg {

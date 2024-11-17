@@ -23,6 +23,9 @@ export interface Settings {
         color: string;
         width: number;
       };
+
+      useCellphoneLayoutForPadNumbers: boolean;
+      backgroundColorPalette: Array<string>;
     };
   };
 }
@@ -52,6 +55,19 @@ export const defaultSettings: Settings = {
         color: "blue",
         width: 12,
       },
+
+      useCellphoneLayoutForPadNumbers: true,
+      backgroundColorPalette: [
+        "#D0D0D0",
+        "#C7A89F",
+        "#A7B3D6",
+        "#F6D6D6",
+        "#F6F7C4",
+        "#A1EEBD",
+        "#7BD3EA",
+        "#B55489",
+        "#3FC0A0",
+      ],
     },
   },
 };

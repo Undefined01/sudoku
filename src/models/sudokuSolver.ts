@@ -163,7 +163,7 @@ export class SudokuSolver {
         }
         cell.clearPencilMarks();
         for (const candidate of candidates) {
-          cell.togglePencilMark(candidate);
+          cell.addPencilMark(candidate);
         }
       }
     });

@@ -32,6 +32,7 @@ export class SudokuCell {
   value?: number;
   candidates = new Set<number>();
   pencilMarks = new Set<number>();
+  colors = new Set<number>();
 
   constructor(options: {
     position: CellPosition;
@@ -53,32 +54,22 @@ export class SudokuCell {
     this.pencilMarks = new Set();
   }
 
-  toggleCandidate(candidate: number) {
-    if (this.isGiven) {
+  addCandidate(candidate: number) {
+    if (this.value !== undefined) {
       return;
     }
-    this.value = undefined;
-    if (this.candidates.has(candidate)) {
-      this.candidates.delete(candidate);
-    } else {
-      this.candidates.add(candidate);
-    }
+    this.candidates.add(candidate);
   }
 
-  clearCandidates() {
-    this.candidates.clear();
-  }
-
-  togglePencilMark(pencilMark: number) {
-    if (this.isGiven) {
+  addPencilMark(pencilMark: number) {
+    if (this.value !== undefined) {
       return;
     }
-    this.value = undefined;
-    if (this.pencilMarks.has(pencilMark)) {
-      this.pencilMarks.delete(pencilMark);
-    } else {
-      this.pencilMarks.add(pencilMark);
-    }
+    this.pencilMarks.add(pencilMark);
+  }
+
+  addColor(color: number) {
+    this.colors.add(color);
   }
 
   clearPencilMarks() {
@@ -115,6 +106,57 @@ export class SudokuState {
 
   getCellByIdx(idx: number) {
     return this.cells[idx];
+  }
+
+  toggleValue(cells: Array<CellPosition>, value: number) {
+    if (cells.every((cell) => this.getCell(cell).value === value)) {
+      cells.forEach((cell) => {
+        this.getCell(cell).setValue(undefined);
+      });
+    } else {
+      cells.forEach((cell) => {
+        this.getCell(cell).setValue(value);
+      });
+    }
+  }
+
+  togglePencilMark(cells: Array<CellPosition>, pencilMark: number) {
+    cells = cells.filter((cell) => this.getCell(cell).value === undefined);
+    if (cells.every((cell) => this.getCell(cell).pencilMarks.has(pencilMark))) {
+      cells.forEach((cell) => {
+        this.getCell(cell).pencilMarks.delete(pencilMark);
+      });
+    } else {
+      cells.forEach((cell) => {
+        this.getCell(cell).addPencilMark(pencilMark);
+      });
+    }
+  }
+
+  toggleCandidate(cells: Array<CellPosition>, candidate: number) {
+    cells = cells.filter((cell) => this.getCell(cell).value === undefined);
+    if (cells.every((cell) => this.getCell(cell).candidates.has(candidate))) {
+      cells.forEach((cell) => {
+        this.getCell(cell).candidates.delete(candidate);
+      });
+    } else {
+      cells.forEach((cell) => {
+        this.getCell(cell).addCandidate(candidate);
+      });
+    }
+  }
+
+  toggleColor(cells: Array<CellPosition>, color: number) {
+    cells = cells.filter((cell) => this.getCell(cell).value === undefined);
+    if (cells.every((cell) => this.getCell(cell).colors.has(color))) {
+      cells.forEach((cell) => {
+        this.getCell(cell).colors.delete(color);
+      });
+    } else {
+      cells.forEach((cell) => {
+        this.getCell(cell).addColor(color);
+      });
+    }
   }
 
   // Import sudoku from a string representation like
