@@ -1,19 +1,11 @@
 <script setup lang="ts">
-import { inject, onMounted } from "vue";
+import { inject } from "vue";
 import { Sudoku } from "@/models/sudoku";
 import { defaultSettings, Settings } from "@/models/settings";
 
 const sudoku = inject<Sudoku>("sudoku")!;
 
 const settings = inject<Settings>("settings") ?? defaultSettings;
-
-onMounted(() => {
-  sudoku.updateState(true, (state) => {
-    state.cells[0].colors.add(0);
-    state.cells[2].colors.add(2);
-    state.cells[2].colors.add(3);
-  });
-});
 
 const { cellSize, backgroundColorPalette } = settings.appearance.sudoku;
 

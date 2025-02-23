@@ -1,7 +1,7 @@
 # sudoku
 A online sudoku pad, sudoku editor and human style sudoku solver.
 
-You can try it online [here](https://sudokupad.lihan.fun)
+You can try it online [here](https://sudoku.lihan.fun)
 
 Currently, the solver is implemented in rust and compiled to wasm. The solver is a human style solver, which means it will try to solve the sudoku in the way a human would do. It will not use brute force to solve the sudoku unless it has to.
 
@@ -45,8 +45,8 @@ Currently, the solver is implemented in rust and compiled to wasm. The solver is
 
         Types of Contradictions:
         - [x] The assumption leads to its own negation.
-        - [ ] The assumption results in a value that cannot be placed anywhere in a house.
-        - [ ] The assumption leads to a cell with no possible candidates.
+        - [x] The assumption results in a value that cannot be placed anywhere in a house.
+        - [x] The assumption leads to a cell with no possible candidates.
 
         In a valid sudoku puzzle, if an assumption consistently holds true across all logical sequences started from the basis, it can be concluded that the assumption is correct.
 
@@ -55,6 +55,9 @@ Currently, the solver is implemented in rust and compiled to wasm. The solver is
         - [x] For a specific digit, one of the cells in a house (row, column, or block) must contain the digit.
 
     - [ ] Forcing Net
+    - [x] Brute Force
+
+        Give a possible solution to the sudoku by searching and backtracking, speeded up by SIMD instructions.
 
 The techniques are implemented in increasing order of complexity, with the solver attempting the simplest methods first. If a puzzle remains unsolved, more advanced techniques are applied.
 
